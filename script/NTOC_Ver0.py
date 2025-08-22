@@ -11,7 +11,7 @@ from ase import units
 from ase.io import read, write, Trajectory
 from ase.geometry import wrap_positions
 from ase.md.langevin import Langevin
-#from ase.md.npt import NPT
+#from ase.md.npt import NPT 
 from ase.md.verlet import VelocityVerlet # For NVE
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize import FIRE
@@ -70,13 +70,13 @@ MINIMIZED_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_minimized.data'
 HEATING_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_heating.data'
 HEATING_EQ_NVT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_heating_eq_nvt.data'
 QUENCHING_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_quench.data'
-QUENCHING_EQ_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_quench_eq_nvt.data'
-PRODUCT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_product_nve.data'
+QUENCHING_EQ_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_quench_eq_nvt.data' 
+PRODUCT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_product_nve.data' 
 
 HEATING_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_heating.thermo'
 HEATING_EQ_NVT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_heating_eq_nvt.thermo'
 QUENCHING_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_quench.thermo'
-QUENCHING_EQ_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_quench_eq_nvt.thermo'
+QUENCHING_EQ_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_quench_eq_nvt.thermo' 
 PRODUCT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_product_nve.thermo'
 
 HEATING_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_heating.traj'
@@ -95,7 +95,7 @@ else:
     device = 'cpu'
     print("CUDA not found. Using CPU.")
 
-# For checking Logging and Thermodynamic Data
+# For manage log files
 def setup_thermo_logger(atoms_obj, filename, thermo_freq, start_step=0):
     """Sets up a logger to print thermodynamic data during a simulation."""
     if not os.path.exists(os.path.dirname(filename)):
@@ -138,15 +138,15 @@ def setup_thermo_logger(atoms_obj, filename, thermo_freq, start_step=0):
 
     return log_data
 
-# For benchmarking simulation performance
+# For benchmarking
 def log_benchmark(stage_name, steps, elapsed_seconds):
     """Calculates and logs the simulation performance."""
-    if elapsed_seconds <= 1e-6: 
-        return
+    if elapsed_seconds == 0:
+        return 
 
     sim_time_ps = steps * TIMESTEP_FS / 1000.0
 
-    ps_per_day = (sim_time_ps / elapsed_seconds) * 86400 
+    ps_per_day = (sim_time_ps / elapsed_seconds) * 86400
 
     if not os.path.exists(BENCHMARK_LOG_FILE):
         with open(BENCHMARK_LOG_FILE, 'w') as f:
@@ -157,7 +157,6 @@ def log_benchmark(stage_name, steps, elapsed_seconds):
         f.write(f"{stage_name:<35s} {elapsed_seconds:>18.2f} {ps_per_day:>25.2f}\n")
 
     print(f"--- Benchmark for {stage_name}: {ps_per_day:.2f} ps/day ---")
-
 
 # ==============================================================================
 # ==============================================================================
@@ -237,8 +236,6 @@ steps_per_stage = HEATING_STEPS // num_stages
 thermo_heat_logger = setup_thermo_logger(atoms, HEATING_LOG_FILE, THERMO_FREQ, start_step=total_steps_so_far)
 traj_heat = Trajectory(HEATING_TRAJECTORY_FILE, 'w', atoms)
 
-start_time_heating = time.time()
-
 current_temp = HEATING_START_TEMP
 for i in range(num_stages):
     target_temp_stage = current_temp + temp_increment
@@ -257,8 +254,6 @@ for i in range(num_stages):
     
     current_temp = target_temp_stage
 
-end_time_heating = time.time()
-log_benchmark('4.1 Gradual Heating (NVT)', HEATING_STEPS, end_time_heating - start_time_heating)
 
 total_steps_so_far += HEATING_STEPS
 write(HEATING_DATA_FILE, atoms, format='lammps-data')
@@ -280,11 +275,7 @@ thermo_eq_nvt_logger = setup_thermo_logger(atoms, HEATING_EQ_NVT_LOG_FILE, THERM
 traj_eq_nvt = Trajectory(HEATING_EQ_NVT_TRAJECTORY_FILE, 'w', atoms)
 dyn_eq_nvt.attach(thermo_eq_nvt_logger, interval=1)
 dyn_eq_nvt.attach(traj_eq_nvt.write, interval=int(DUMP_FREQ))
-
-start_time_eq_nvt = time.time()
 dyn_eq_nvt.run(HEATING_EQ_NVT_STEPS)
-end_time_eq_nvt = time.time()
-log_benchmark('4.2 Heating Equilibration (NVT)', HEATING_EQ_NVT_STEPS, end_time_eq_nvt - start_time_eq_nvt)
 
 total_steps_so_far += HEATING_EQ_NVT_STEPS
 write(HEATING_EQ_NVT_DATA_FILE, atoms, format='lammps-data')
@@ -306,8 +297,6 @@ num_stages_quench = int((start_temp_quench - end_temp_quench) / temp_decrement_q
 thermo_quench_logger = setup_thermo_logger(atoms, QUENCHING_LOG_FILE, THERMO_FREQ, start_step=total_steps_so_far)
 traj_quench = Trajectory(QUENCHING_TRAJECTORY_FILE, 'w', atoms)
 
-start_time_quench = time.time()
-
 current_temp_quench = start_temp_quench
 total_quench_steps = 0
 for i in range(num_stages_quench):
@@ -328,15 +317,13 @@ for i in range(num_stages_quench):
     current_temp_quench = target_temp_quench
     total_quench_steps += steps_per_stage_quench
 
-end_time_quench = time.time()
-log_benchmark('5.1 Quenching (NVT)', total_quench_steps, end_time_quench - start_time_quench)
-
 total_steps_so_far += total_quench_steps
 write(QUENCHING_DATA_FILE, atoms, format='lammps-data')
 traj_quench.close()
 print("--- Quenching Finished ---")
 
 # ---- 5.2 Quenching Equilibration(NVT) ----
+# This section was changed from NPT to NVT to keep the density constant.
 print(f"\n--- Starting Quenching Equilibration (NVT) at {QUENCHING_TARGET_TEMP} K for {QUENCHING_EQ_NVT_STEPS * TIMESTEP_FS / 1000:.1f} ps ---")
 dyn_quench_eq = Langevin(
     atoms,
@@ -349,11 +336,7 @@ thermo_quench_eq_logger = setup_thermo_logger(atoms, QUENCHING_EQ_LOG_FILE, THER
 traj_quench_eq = Trajectory(QUENCHING_EQ_TRAJECTORY_FILE, 'w', atoms)
 dyn_quench_eq.attach(thermo_quench_eq_logger, interval=1)
 dyn_quench_eq.attach(traj_quench_eq.write, interval=int(DUMP_FREQ))
-
-start_time_quench_eq = time.time()
 dyn_quench_eq.run(QUENCHING_EQ_NVT_STEPS)
-end_time_quench_eq = time.time()
-log_benchmark('5.2 Quenching Equilibration (NVT)', QUENCHING_EQ_NVT_STEPS, end_time_quench_eq - start_time_quench_eq)
 
 total_steps_so_far += QUENCHING_EQ_NVT_STEPS
 write(QUENCHING_EQ_DATA_FILE, atoms, format='lammps-data')
@@ -363,6 +346,7 @@ print("--- Quenching NVT Equilibration Finished ---")
 # ===============================
 # === 6. Production Run (NVE) ===
 # ===============================
+# This section was changed to NVE to check for energy conservation in an isolated system.
 print(f"\n--- Starting Production Run (NVE) at {QUENCHING_TARGET_TEMP} K for {PROD_NVE_RUN_STEPS * TIMESTEP_FS / 1000:.1f} ps ---")
 dyn_prod = VelocityVerlet(
     atoms,
@@ -374,10 +358,7 @@ traj_prod = Trajectory(PRODUCT_TRAJECTORY_FILE, 'w', atoms)
 dyn_prod.attach(thermo_prod_logger, interval=1)
 dyn_prod.attach(traj_prod.write, interval=int(DUMP_FREQ))
 
-start_time_prod = time.time()
 dyn_prod.run(PROD_NVE_RUN_STEPS)
-end_time_prod = time.time()
-log_benchmark('6. Production (NVE)', PROD_NVE_RUN_STEPS, end_time_prod - start_time_prod)
 
 total_steps_so_far += PROD_NVE_RUN_STEPS
 write(PRODUCT_DATA_FILE, atoms, format='lammps-data')

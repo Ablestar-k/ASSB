@@ -1,4 +1,3 @@
-nohup: ignoring input
 CUDA found. Using GPU: NVIDIA GeForce RTX 4090
 --- Setting up simulation environment ---
 Reading initial structure from: '../initial/NTOC_1.xyz'
@@ -11,4 +10,4 @@ Supercell vectors:
 
 --- Loading ML potential ---
 Checkpoint path: ./mattersim-v1.0.0-5M.pth
-[32m2025-08-22 13:02:21.996[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m
+[32m2025-08-22 16:17:38.646[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m

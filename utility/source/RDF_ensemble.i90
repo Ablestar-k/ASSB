@@ -1,4 +1,4 @@
-# 1 "/SSD2/sejung/NTOC/utility/MSD.f90"
+# 1 "/SSD2/sejung/NTOC/utility/source/RDF_ensemble.f90"
 program ensemble_rdf_analyzer
     use, intrinsic :: iso_fortran_env, only: real64, error_unit
     implicit none
