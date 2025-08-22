@@ -1,6 +1,7 @@
 # Set environment variable for PyTorch memory management
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
+import sys
 import torch
 
 import numpy as np
@@ -17,6 +18,8 @@ from mattersim.forcefield.potential import Potential
 from mattersim.forcefield import MatterSimCalculator
 
 # --- Simulation Parameters ---
+
+ENSEMBLE_INDEX = sys.argv[1]
 
 # General
 TIMESTEP_FS = 2.0
@@ -50,16 +53,16 @@ THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
 DUMP_FREQ = 1000    # Frequency for trajectory data (Every 2 ps)
 
 # --- File and Path Definitions ---
-SIMULATION_NAME = 'NTOC_1' # Updated simulation name
+SIMULATION_NAME = f'NTOC_ver1_{ENSEMBLE_INDEX}'
 INITIAL_PATH = f'../initial'
 DUMP_PATH = f'../dump/dump_{SIMULATION_NAME}'
 THERMO_PATH = f'../thermo/thermo_{SIMULATION_NAME}'
 DATA_PATH = f'../data/data_{SIMULATION_NAME}'
 
-INITIAL_STRUCTURE_FILE = f'{INITIAL_PATH}/NTOC_1.xyz'
+INITIAL_STRUCTURE_FILE = f'{INITIAL_PATH}/NTOC_{ENSEMBLE_INDEX}.xyz'
 
 # --- ML Potential ---
-CHECKPOINT_PATH = "/home/sejung/NTOC_mattersim/script/mattersim-v1.0.0-5M.pth"
+CHECKPOINT_PATH = "./mattersim-v1.0.0-5M.pth"
 
 # Output files
 MINIMIZED_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_minimized.data'
@@ -153,7 +156,7 @@ if not os.path.exists(INITIAL_STRUCTURE_FILE):
 unit_cell = read(INITIAL_STRUCTURE_FILE, format='xyz')
 print(f"Successfully loaded {len(unit_cell)} atoms from the unit cell file.")
 
-box_size = [93.32, 93.32, 93.32]
+box_size = [48.78, 48.78, 48.78]
 unit_cell.set_cell(box_size)
 unit_cell.set_pbc(True)
 unit_cell.set_positions(
@@ -338,4 +341,3 @@ total_steps_so_far += PROD_NVE_RUN_STEPS
 write(PRODUCT_DATA_FILE, atoms, format='lammps-data')
 traj_prod.close()
 print("--- Production Run Finished. Simulation Complete. ---")
-##

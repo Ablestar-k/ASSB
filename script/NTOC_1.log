@@ -1,0 +1,14 @@
+nohup: ignoring input
+CUDA found. Using GPU: NVIDIA GeForce RTX 4090
+--- Setting up simulation environment ---
+Reading initial structure from: '../initial/NTOC_1.xyz'
+Successfully loaded 4004 atoms from the unit cell file.
+
+--- Supercell Information ---
+Total atoms: 4004
+Supercell vectors:
+ Cell([48.78, 48.78, 48.78])
+
+--- Loading ML potential ---
+Checkpoint path: ./mattersim-v1.0.0-5M.pth
+[32m2025-08-22 13:02:21.996[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m
