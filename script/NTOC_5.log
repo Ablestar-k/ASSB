@@ -1,0 +1,15 @@
+--- My script actually sees: CUDA_VISIBLE_DEVICES='6' ---
+--- PyTorch is set to use 1 CPU threads ---
+CUDA found. Using GPU: NVIDIA GeForce RTX 3090
+--- Setting up simulation environment ---
+Reading initial structure from: '../initial/NTOC_5.xyz'
+Successfully loaded 4004 atoms from the unit cell file.
+
+--- Supercell Information ---
+Total atoms: 4004
+Supercell vectors:
+ Cell([48.78, 48.78, 48.78])
+
+--- Loading ML potential ---
+Checkpoint path: ./mattersim-v1.0.0-5M.pth
+[32m2025-08-27 19:04:19.912[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m

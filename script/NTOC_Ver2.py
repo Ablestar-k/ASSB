@@ -1,14 +1,8 @@
 # Set environment variable for PyTorch memory management
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-print(f"--- My script actually sees: CUDA_VISIBLE_DEVICES='{os.getenv('CUDA_VISIBLE_DEVICES')}' ---")
 import sys
 import torch
-
-NUM_CPU_CORES = 1
-torch.set_num_threads(NUM_CPU_CORES)
-print(f"--- PyTorch is set to use {torch.get_num_threads()} CPU threads ---")
-
 import time
 
 import numpy as np
@@ -21,8 +15,10 @@ from ase.md.langevin import Langevin
 from ase.md.verlet import VelocityVerlet # For NVE
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 from ase.optimize import FIRE
-from mattersim.forcefield.potential import Potential
+from mattersim.jit_compile_tools.jit_compile import load_deployed_model
 from mattersim.forcefield import MatterSimCalculator
+from mattersim.forcefield.potential import Potential
+
 
 # --- Simulation Parameters ---
 
@@ -53,14 +49,14 @@ QUENCHING_RATE = 5 # K/ps
 QUENCHING_EQ_NVT_STEPS = 250000 # Production for 0.5 ns
 
 # Production (NVE) - Changed from NVT to NVE
-PROD_NVE_RUN_STEPS = 500000 # Production for 1.0 ns
+PROD_NVE_RUN_STEPS = 250000 # Production for 0.5 ns
 
 # I/O Parameters
 THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
 DUMP_FREQ = 1000    # Frequency for trajectory data (Every 2 ps)
 
 # --- File and Path Definitions ---
-SIMULATION_NAME = f'NTOC_ver1_{ENSEMBLE_INDEX}'
+SIMULATION_NAME = f'NTOC_ver2_{ENSEMBLE_INDEX}'
 INITIAL_PATH = f'../initial'
 DUMP_PATH = f'../dump/dump_{SIMULATION_NAME}'
 THERMO_PATH = f'../thermo/thermo_{SIMULATION_NAME}'
@@ -199,16 +195,18 @@ print(f"Total atoms: {len(atoms)}")
 print("Supercell vectors:\n", atoms.get_cell())
 
 # ============================
-# === 2. Load ML Potential ===
+# === 2. Load and JIT-Compile ML Potential ===
 # ============================
-
-print(f"\n--- Loading ML potential ---")
-print(f"Checkpoint path: {CHECKPOINT_PATH}")
+print(f"\n--- Loading ML potential from: {CHECKPOINT_PATH} ---")
 if not os.path.exists(CHECKPOINT_PATH):
     raise FileNotFoundError(f"Error: Checkpoint file not found at '{CHECKPOINT_PATH}'.")
-torch.cuda.empty_cache()
-potential = Potential.from_checkpoint(CHECKPOINT_PATH, device=device)
-atoms.calc = MatterSimCalculator(potential=potential)
+
+
+atoms.calc = MatterSimCalculator.from_checkpoint(
+    load_path=CHECKPOINT_PATH,
+    device=device
+)
+
 print(f"Successfully attached potential to device: '{device}'")
 
 
@@ -216,12 +214,12 @@ print(f"Successfully attached potential to device: '{device}'")
 # === 3. Energy Minimization ====
 # ===============================
 
-print(f"\n--- Starting Energy Minimization (Steps={MIN_STEPS}, f_max={fmax_criteria:.2e} eV/A) ---")
-dyn_opt = FIRE(atoms, maxstep=0.2, logfile=f'{THERMO_PATH}/{SIMULATION_NAME}_minimization.log')
-dyn_opt.run(fmax=fmax_criteria, steps=MIN_STEPS)
-write(MINIMIZED_DATA_FILE, atoms, format='lammps-data')
-print("--- Energy Minimization Finished ---")
-print(f"Final box dimensions after minimization: {atoms.get_cell().lengths()}")
+#print(f"\n--- Starting Energy Minimization (Steps={MIN_STEPS}, f_max={fmax_criteria:.2e} eV/A) ---")
+#dyn_opt = FIRE(atoms, maxstep=0.2, logfile=f'{THERMO_PATH}/{SIMULATION_NAME}_minimization.log')
+#dyn_opt.run(fmax=fmax_criteria, steps=MIN_STEPS)
+#write(MINIMIZED_DATA_FILE, atoms, format='lammps-data')
+#print("--- Energy Minimization Finished ---")
+#print(f"Final box dimensions after minimization: {atoms.get_cell().lengths()}")
 
 # ==========================
 # === 4. Heating Process ===

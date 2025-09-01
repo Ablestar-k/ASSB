@@ -19,7 +19,7 @@ PROGRAM ensemble_avg
 
     ! == 1. Initialization and Memory Allocation based on the first file ==
     unit_in = 11
-    write(xyz_fname, '(A,A,I0,A)') '../thermo/', 'NTOC_ver1_', 1, '_product_nve.thermo'
+    write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', 1, '/', 'NTOC_ver1_', 1, '_product_nve.thermo'
     PRINT *, 'Initializing with file: ', TRIM(xyz_fname)
 
     OPEN(UNIT=unit_in, FILE=TRIM(xyz_fname), STATUS='OLD', ACTION='READ', IOSTAT=ios)
@@ -62,7 +62,7 @@ PROGRAM ensemble_avg
 
     ! == 2. Read data from all ensemble files ==
     DO i = 1, NUM_ENSEMBLES
-        write(xyz_fname, '(A,A,I0,A)') '../thermo/', 'NTOC_ver1_', i, '_product_nve.thermo'
+        write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', i, '/', 'NTOC_ver1_', i, '_product_nve.thermo'
         PRINT *, 'Processing file: ', TRIM(xyz_fname)
 
         OPEN(UNIT=unit_in, FILE=TRIM(xyz_fname), STATUS='OLD', ACTION='READ', IOSTAT=ios)
@@ -86,7 +86,7 @@ PROGRAM ensemble_avg
 
     ! == 3. Calculate averages and standard deviations and write to file ==
     unit_out = 22
-    OUTPUT_FILE = '../thermo/ensemble_avg.txt'
+    OUTPUT_FILE = '../result/ensemble_avg.txt'
     OPEN(UNIT=unit_out, FILE=OUTPUT_FILE, STATUS='REPLACE', ACTION='WRITE', IOSTAT=ios)
     IF (ios /= 0) THEN
         PRINT *, 'Error opening output file: ', OUTPUT_FILE
@@ -143,7 +143,7 @@ PROGRAM ensemble_avg
         density_std = SQRT(MAX(0.d0, density_sq_sum / NUM_ENSEMBLES - density_avg**2))
 
         ! Write results for the current frame
-        WRITE(unit_out, '(I11, F13.4, 14(1X, E14.6))') &
+        WRITE(unit_out, '(F12.1, F13.1, 14(1X, F14.6))') &
             step(j), time_ps(j), temp_avg, temp_std, pressure_atm_avg, pressure_atm_std, &
             pe_avg, pe_std, ke_avg, ke_std, Etot_avg, Etot_std, &
             vol_avg, vol_std, density_avg, density_std

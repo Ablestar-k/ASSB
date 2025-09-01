@@ -2,11 +2,9 @@ program ensemble_rdf_analyzer
     use, intrinsic :: iso_fortran_env, only: real64, error_unit
     implicit none
 
-    character(len=20), parameter :: ENSEMBLE_DIR_PATTERN = 'dump_NTOC_{}'
-    character(len=20), parameter :: FILENAME_PATTERN     = '{}_product.xyz'
-    integer, parameter          :: NUM_ENSEMBLES         = 5
-    double precision, parameter :: BINSIZE               = 0.05d0
-    double precision, parameter :: MAX_R                 = 10.0d0
+    integer :: NUM_ENSEMBLES
+    double precision :: BINSIZE
+    double precision :: MAX_R
 
     character(len=8) :: SPECIES1, SPECIES2
 
@@ -19,6 +17,7 @@ program ensemble_rdf_analyzer
     double precision, allocatable :: mean_gr_arr(:), std_gr_arr(:)
 
     open(unit=99, file='g_r.inp', status='old', action='read')
+    read(99, *) SIMULATION_NAME, NUM_ENSEMBLES, BINSIZE, MAX_R 
     read(99, *) SPECIES1, SPECIES2
     close(99)
 
@@ -37,7 +36,7 @@ program ensemble_rdf_analyzer
     ! Main loop over ensemble members
     ! =============================
     do i = 1, NUM_ENSEMBLES
-        write(dir_part, '(A,I0,A)') 'dump_NTOC_', i
+        write(dir_part, '(A,I0,A)') 'dump_', SIMULATION_NAME, '_', i
         write(file_part, '(I0,A)')  i, '_product.xyz'
         xyz_fname = trim(dir_part)//'/'//trim(file_part)
         print *, 'Processing: ', trim(xyz_fname)
