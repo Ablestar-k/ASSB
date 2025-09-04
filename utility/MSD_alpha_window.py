@@ -59,8 +59,8 @@ ax.plot(time_centers, alpha_smooth, color='royalblue', linestyle='-', linewidth=
 ax.axhline(1, color='gray', linestyle='--', linewidth=1.5, label=r'$\alpha=1$ (Normal Diffusion)')
 
 ax.set_xlabel('Time (ps)', fontsize=14)
-ax.set_ylabel(r'Anomalous Exponent $\alpha$', fontsize=14)
-ax.set_title(r'Comparison of Methods for Calculating $\alpha(t)$', fontsize=16, fontweight='bold')
+ax.set_ylabel(r'$\alpha$', fontsize=14)
+ax.set_title(rf'"{ATOM_NAME}" Time vs $\alpha$', fontsize=16, fontweight='bold')
 ax.set_ylim(-0.5, 2.5)
 ax.set_xscale('log') 
 ax.legend(fontsize=12)

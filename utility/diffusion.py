@@ -5,17 +5,19 @@ from scipy.stats import linregress
 import os
 
 ATOM_NAME = 'Na'
-INPUT_FILENAME = f'../result/{ATOM_NAME}_MSD_ensemble_averge.dat'
+INPUT_FILE_PATH = '../result/MSD'
+INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average.dat'
 
+INPUT_FILE = os.path.join(INPUT_FILE_PATH, INPUT_FILENAME)
 
-FIT_START_TIME_PS = 200.0
+FIT_START_TIME_PS = 600.0
 FIT_END_TIME_PS = 800.0
 
 DIMENSIONALITY = 3
 
 try:
 
-    df = pd.read_csv(INPUT_FILENAME,
+    df = pd.read_csv(INPUT_FILE,
                      sep='\s+',        
                      comment='#',        
                      names=['Time', 'MSD_avg', 'MSD_std'])
@@ -23,10 +25,10 @@ try:
     time_lags = df['Time'].values
     msd_mean = df['MSD_avg'].values
     msd_std = df['MSD_std'].values
-    print(f"Successfully loaded data from '{INPUT_FILENAME}'.")
+    print(f"Successfully loaded data from '{INPUT_FILE}'.")
 
 except FileNotFoundError:
-    print(f"ERROR: File not found at '{INPUT_FILENAME}'. Please check the file name and location.")
+    print(f"ERROR: File not found at '{INPUT_FILE}'. Please check the file name and location.")
     exit()
 except Exception as e:
     print(f"ERROR: An error occurred while reading the file: {e}")
@@ -71,6 +73,8 @@ ax1.plot(time_lags, msd_mean, label='MSD', color='royalblue', linewidth=2.5)
 ax1.fill_between(time_lags, msd_mean - msd_std, msd_mean + msd_std, color='cornflowerblue', alpha=0.3, label='Std Dev')
 ax1.set_xlabel('Time (ps)', fontsize=14)
 ax1.set_ylabel('MSD ($Å^2$)', fontsize=14, color='royalblue')
+ax1.set_xscale('log')
+ax1.set_yscale('log')
 ax1.tick_params(axis='y', labelcolor='royalblue')
 
 if len(fit_indices[0]) >= 2:
@@ -79,16 +83,16 @@ if len(fit_indices[0]) >= 2:
 
 ax1.legend(loc='upper left')
 
-ax2 = ax1.twinx()
-ax2.plot(time_lags[valid_indices][1:], alpha, color='green', linestyle=':', linewidth=2, label=r'Anomalous Exponent $\alpha(t)$')
-ax2.set_ylabel(r'Slope $\alpha$', fontsize=14, color='green')
-ax2.tick_params(axis='y', labelcolor='green')
-ax2.set_ylim(0, 2)
-ax2.axhline(1, color='gray', linestyle='--', label=r'$\alpha=1$ (Normal Diffusion)')
-ax2.legend(loc='lower right')
-
-plt.title('MSD and Anomalous Diffusion Analysis', fontsize=16, fontweight='bold')
-fig.tight_layout()
+#ax2 = ax1.twinx()
+#ax2.plot(time_lags[valid_indices][1:], alpha, color='green', linestyle=':', linewidth=2, label=r'Anomalous Exponent $\alpha(t)$')
+#ax2.set_ylabel(r'Slope $\alpha$', fontsize=14, color='green')
+#ax2.tick_params(axis='y', labelcolor='green')
+#ax2.set_ylim(0, 2)
+#ax2.axhline(1, color='gray', linestyle='--', label=r'$\alpha=1$ (Normal Diffusion)')
+#ax2.legend(loc='lower right')
+#
+#plt.title('MSD and Anomalous Diffusion Analysis', fontsize=16, fontweight='bold')
+#fig.tight_layout()
 
 output_path = "../result"
 output_fig_filename = f'MSD_{ATOM_NAME}_diffusion_analysis.png'

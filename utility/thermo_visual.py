@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 file_path = "../result/ensemble_avg.txt"
 column_names = [
@@ -8,7 +9,6 @@ column_names = [
     'PE', 'PE_std', 'KE', 'KE_std', 'Etot', 'Etot_std',
     'Vol', 'Vol_std', 'Density', 'Density_std'
 ]
-
 
 try:
     df = pd.read_csv(
@@ -18,66 +18,92 @@ try:
         header=None,
         names=column_names
     )
-
     print(f"Successfully loaded data from '{file_path}'.")
 
 except FileNotFoundError:
     print(f"Error: The file '{file_path}' was not found. Please check the file path.")
     exit()
 
+output_path = "../result"
+os.makedirs(output_path, exist_ok=True)
 plt.style.use('seaborn-v0_8-whitegrid')
 
-fig, axes = plt.subplots(3, 1, figsize=(12, 18), sharex=True)
+# Temperature
+avg_temp = df['Temp'].mean()
 
-# 1) Temperature vs. Time plot
-axes[0].plot(df['Time(ps)'], df['Temp'], color='r', label='Average Temperature')
-axes[0].fill_between(
+
+plt.figure(figsize=(10, 7))
+plt.plot(df['Time(ps)'], df['Temp'], color='r', label='Temperature')
+plt.fill_between(
     df['Time(ps)'],
     df['Temp'] - df['Temp_std'],
     df['Temp'] + df['Temp_std'],
     color='r',
-    alpha=0.2,  
-    label='Temperature Std Dev'
+    alpha=0.2,
+    label='Std Dev'
 )
-axes[0].set_title('Temperature vs. Time', fontsize=16)
-axes[0].set_ylabel('Temperature (K)', fontsize=12)
-axes[0].legend()
-axes[0].grid(True)
+plt.axhline(y=avg_temp, color='black', linestyle='--', label=f'Average: {avg_temp:.2f} K')
 
-# 2) Pressure vs. Time plot
-axes[1].plot(df['Time(ps)'], df['P'], color='b', label='Average Pressure')
-axes[1].fill_between(
+plt.title('Temperature vs. Time', fontsize=16)
+plt.xlabel('Time (ps)', fontsize=12)
+plt.ylabel('Temperature (K)', fontsize=12)
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig(os.path.join(output_path, 'temperature_avg.png'), dpi=300)
+plt.close()
+print(f"Temperature plot saved to 'temperature_avg.png'. Average Temp: {avg_temp:.2f} K")
+
+
+# Pressure
+avg_pressure = df['P'].mean()
+
+plt.figure(figsize=(10, 7))
+plt.plot(df['Time(ps)'], df['P'], color='b', label='Pressure')
+plt.fill_between(
     df['Time(ps)'],
     df['P'] - df['P_std'],
     df['P'] + df['P_std'],
     color='b',
-    alpha=0.2,  
-    label='Pressure Std Dev'
+    alpha=0.2,
+    label='Std Dev'
 )
-axes[1].set_title('Pressure vs. Time', fontsize=16)
-axes[1].set_ylabel('Pressure (bar)', fontsize=12)
-axes[1].legend()
-axes[1].grid(True)
+plt.axhline(y=avg_pressure, color='black', linestyle='--', label=f'Average: {avg_pressure:.2f} atm')
 
-# 3) Total Energy vs. Time plot
-axes[2].plot(df['Time(ps)'], df['Etot'], color='g', label='Average Total Energy')
-axes[2].fill_between(
+plt.title('Pressure vs. Time', fontsize=16)
+plt.xlabel('Time (ps)', fontsize=12)
+plt.ylabel('Pressure (atm)', fontsize=12)
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.savefig(os.path.join(output_path, 'pressure_avg.png'), dpi=300)
+plt.close()
+print(f"Pressure plot saved to 'pressure_avg.png'. Average Pressure: {avg_pressure:.2f} atm")
+
+
+# Total Energy
+avg_energy = df['Etot'].mean()
+
+plt.figure(figsize=(10, 7))
+plt.plot(df['Time(ps)'], df['Etot'], color='g', label='Total Energy')
+plt.fill_between(
     df['Time(ps)'],
     df['Etot'] - df['Etot_std'],
     df['Etot'] + df['Etot_std'],
     color='g',
-    alpha=0.2,  
-    label='Total Energy Std Dev'
+    alpha=0.2,
+    label='Std Dev'
 )
-axes[2].set_title('Total Energy vs. Time', fontsize=16)
-axes[2].set_xlabel('Time (ps)', fontsize=12)  
-axes[2].set_ylabel('Total Energy (eV)', fontsize=12)
-axes[2].legend()
-axes[2].grid(True)
+plt.axhline(y=avg_energy, color='black', linestyle='--', label=f'Average: {avg_energy:.2f} eV')
 
-
+plt.title('Total Energy vs. Time', fontsize=16)
+plt.xlabel('Time (ps)', fontsize=12)
+plt.ylabel('Total Energy (eV)', fontsize=12)
+plt.legend()
+plt.grid(True)
 plt.tight_layout()
+plt.savefig(os.path.join(output_path, 'energy_avg.png'), dpi=300)
+plt.close()
+print(f"Total Energy plot saved to 'energy_avg.png'. Average Energy: {avg_energy:.2f} eV")
 
-plt.savefig('simulation_overview_with_std.png')
-
-print("\nThe combined plot has been saved as 'simulation_overview_with_std.png'.")
+print("\nAll plots have been saved successfully as separate files.")

@@ -9,20 +9,19 @@ INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average.dat'
 
 INPUT_FILE = os.path.join(INPUT_FILE_PATH, INPUT_FILENAME)
 
-
 try:
 
-    df = pd.read_csv(INPUT_FILENAME,
+    df = pd.read_csv(INPUT_FILE,
                      sep='\s+',
                      comment='#',
                      names=['Time', 'MSD_avg', 'MSD_std'])
 
     time_lags = df['Time'].values
     msd_mean = df['MSD_avg'].values
-    print(f"Successfully loaded data from '{INPUT_FILENAME}'.")
+    print(f"Successfully loaded data from '{INPUT_FILE}'.")
 
 except FileNotFoundError:
-    print(f"ERROR: File not found at '{INPUT_FILENAME}'. Please check the file name and location.")
+    print(f"ERROR: File not found at '{INPUT_FILE}'. Please check the file name and location.")
     exit()
 except Exception as e:
     print(f"ERROR: An error occurred while reading the file: {e}")
@@ -47,8 +46,8 @@ ax.plot(time_lags[valid_indices][1:], alpha, color='green', linestyle='-', linew
 ax.axhline(1, color='gray', linestyle='--', label=r'$\alpha=1$ (Normal Diffusion)')
 
 ax.set_xlabel('Time (ps)', fontsize=14)
-ax.set_ylabel(r'Anomalous Exponent $\alpha$', fontsize=14)
-ax.set_title(r'Anomalous Diffusion Exponent ($\alpha$) vs. Time', fontsize=16, fontweight='bold')
+ax.set_ylabel(r'$\alpha$', fontsize=14)
+ax.set_title(rf'"{ATOM_NAME}" Time vs $\alpha$', fontsize=16, fontweight='bold')
 ax.set_ylim(0, 2) 
 ax.legend(fontsize=12)
 ax.tick_params(axis='both', which='major', labelsize=12)

@@ -1,6 +1,6 @@
 import MDAnalysis as mda
 import MDAnalysis.analysis.msd as msd
-from MDAnalysis.transformations import unwrap
+from MDAnalysis.transformations import unwrap, nojump
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -27,22 +27,24 @@ for i in range(1, NUM_ENSEMBLES + 1):
 
     print(f"Processing [{i}/{NUM_ENSEMBLES}]: {xyz_path}")
 
+    
     try:
         u = mda.Universe(xyz_path)
         ag = u.select_atoms(ATOM_GROUP_TO_ANALYZE)
-
-        u.trajectory.add_transformations(unwrap(ag))
-        u.trajectory.dt = SIMULATION_DT
 
         if len(ag) == 0:
             print(f"WARNING: No atoms matched in {xyz_path}. Skipping.")
             continue
 
-        msd_analysis = msd.EinsteinMSD(ag, fft=True)
+
+        transform = mda.transformations.nojump.Nojump(u.atoms) 
+        u.trajectory.add_transformations(transform)
+
+        msd_analysis = msd.EinsteinMSD(ag, msd_type='xyz', fft=True)
         msd_analysis.run()
-        
+
         all_msd.append(msd_analysis.results.timeseries)
-        
+
     except Exception as e:
         print(f"ERROR processing {xyz_path}: {e}")
 

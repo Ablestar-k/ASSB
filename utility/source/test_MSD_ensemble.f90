@@ -27,8 +27,11 @@ program ensemble_msd_analyzer
     read(10,*) SIMULATION_NAME, TARGET_SPECIES_NAME, TIME_STEP_FS, TOTAL_TIME_MAX, NUM_ENSEMBLES, NUM_TOTAL_PARTICLES
     close(10)
 
-    write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1
-    write(file_part, '(I1,A)') 1, '_product.xyz'
+    dir_part = 'dump_' // trim(SIMULATION_NAME) // '_' // trim(1)
+    file_part = trim(1), '_product.xyz'
+
+    !write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1
+    !write(file_part, '(I1,A)') 1, '_product.xyz'
     xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
     call prescan_trajectory(xyz_fname, NUM_TOTAL_PARTICLES, TARGET_SPECIES_NAME, &
                               num_target_particles, target_indices)
@@ -100,9 +103,7 @@ program ensemble_msd_analyzer
     end do
 
     ! Write final output file
-    open(newunit=uout, file='../result/' // trim(TARGET_SPECIES_NAME)//'_MSD_ensemble_average.dat', &
-        status='replace', action='write', iostat=ios)
-        
+    open(newunit=uout, file='../result/MSD_ensemble_average.dat', status='replace', action='write', iostat=ios)
     if (ios /= 0) stop 'Error creating output file.'
 
     write(uout, '(A18, A24, A24)') '# Time (ps)', 'MSD_mean (Angstrom^2)', 'MSD_std (Angstrom^2)'
@@ -131,7 +132,7 @@ contains
         character(len=2048) :: header_line, line_buffer
 
         open(newunit=uin, file=trim(trajectory_file_name), status='old', action='read', iostat=ios)
-        print *, "Pre scan file : ", xyz_fname
+        print *, "Pre scan Trajectory file : ", trajectory_file_name
 
         if (ios /= 0) stop 'Pre-scan: Could not open file.'
 

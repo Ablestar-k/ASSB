@@ -7,8 +7,8 @@ import pandas as pd
 
 BASE_DIR_NAME = "../dump/dump_NTOC_ver1_{}"
 NUM_ENSEMBLES = 5
-ATOM_GROUP_TO_ANALYZE_1 = "name Ta"
-ATOM_GROUP_TO_ANALYZE_2 = "name Na"
+ATOM_GROUP_TO_ANALYZE_1 = "name Na"
+ATOM_GROUP_TO_ANALYZE_2 = "name Cl"
 NBINS = 400
 RANGE = (0.0, 20.0)
 SKIP_PERCENT = 0.0
