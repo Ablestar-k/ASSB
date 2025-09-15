@@ -21,6 +21,6 @@ do
     CUDA_VISIBLE_DEVICES=${GPU_ID} \
     OMP_NUM_THREADS=${CORES_PER_JOB} \
     taskset -c ${CPU_LIST} \
-    nohup python3 NTOC_Ver1_1.py ${ENSEMBLE_ID} > NTOC_${ENSEMBLE_ID}_1.log 2>&1 &
+    nohup python3 NTOC_Ver1_andersen.py ${ENSEMBLE_ID} > NTOC_${ENSEMBLE_ID}_andersen.log 2>&1 &
 
 done
