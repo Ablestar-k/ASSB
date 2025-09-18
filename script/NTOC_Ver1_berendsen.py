@@ -55,10 +55,10 @@ QUENCHING_RATE = 5 # K/ps
 QUENCHING_EQ_NVT_STEPS = 250000 # Production for 0.5 ns
 
 # Pre-Production (NVT+NVE) 
-# NVE(0.1 ns) -> NVT(0.05 ns) * 3
+# NVE(0.2 ns) -> NVT(0.1 ns) * 3
 # To solve temperature problem during production run
-PRE_PROD_NVT_RUN_STETS = 25000 # NVT Production for 0.05 ns
-PRE_PROD_NVE_RUN_STEPS = 50000 # NVE Production for 0.1 ns
+PRE_PROD_NVT_RUN_STETS = 50000 # NVT Production for 0.1 ns
+PRE_PROD_NVE_RUN_STEPS = 100000 # NVE Production for 0.2 ns
 
 # Production(NVE)
 PROD_NVE_RUN_STEPS = 750000 # Production for 1.5 ns 
@@ -68,7 +68,7 @@ THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
 DUMP_FREQ = 1000    # Frequency for trajectory data (Every 2 ps)
 
 # --- File and Path Definitions ---
-SIMULATION_NAME = f'NTOC_ver1_{ENSEMBLE_INDEX}_andersen'
+SIMULATION_NAME = f'NTOC_ver1_{ENSEMBLE_INDEX}_berendsen'
 INITIAL_PATH = f'../initial'
 DUMP_PATH = f'../dump/dump_{SIMULATION_NAME}'
 THERMO_PATH = f'../thermo/thermo_{SIMULATION_NAME}'

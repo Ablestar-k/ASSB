@@ -12,4 +12,4 @@ Supercell vectors:
 
 --- Loading ML potential ---
 Checkpoint path: ./mattersim-v1.0.0-5M.pth
-[32m2025-09-15 18:14:12.548[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m
+[32m2025-09-18 10:48:38.962[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m

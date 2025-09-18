@@ -18,7 +18,8 @@ print("Starting MSD analysis...")
 for i in range(1, NUM_ENSEMBLES + 1):
     directory = BASE_DIR_NAME.format(i)
 
-    xyz_filename = f"{i}_product.xyz"
+    #xyz_filename = f"{i}_product.xyz"
+    xyz_filename = f"{i}_quench_eq.xyz"
     xyz_path = os.path.join(directory, xyz_filename)
 
     if not os.path.exists(xyz_path):
@@ -67,7 +68,7 @@ if all_msd:
     os.makedirs(output_path, exist_ok=True) 
 
     atom_name = ATOM_GROUP_TO_ANALYZE.split()[-1]
-    output_data_filename = f'{atom_name}_MSD_ensemble_average.dat'
+    output_data_filename = f'{atom_name}_MSD_quench_ensemble_average.dat'
     output_data_file = os.path.join(output_path, output_data_filename)
 
     data_to_save = {

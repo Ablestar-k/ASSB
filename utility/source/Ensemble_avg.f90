@@ -19,8 +19,9 @@ PROGRAM ensemble_avg
 
     ! == 1. Initialization and Memory Allocation based on the first file ==
     unit_in = 11
-    write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', 1, '/', 'NTOC_ver1_', 1, &
-    '_quench_eq_nvt.thermo'
+    write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', 1, '_andersen/', 'NTOC_ver1_', 1, &
+    '_andersen_product_nve.thermo'
+    
     PRINT *, 'Initializing with file: ', TRIM(xyz_fname)
 
     OPEN(UNIT=unit_in, FILE=TRIM(xyz_fname), STATUS='OLD', ACTION='READ', IOSTAT=ios)
@@ -63,8 +64,8 @@ PROGRAM ensemble_avg
 
     ! == 2. Read data from all ensemble files ==
     DO i = 1, NUM_ENSEMBLES
-        write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', i, '/', 'NTOC_ver1_', i, &
-         '_quench_eq_nvt.thermo'
+        write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', i, '_andersen/', 'NTOC_ver1_', i, &
+         '_andersen_product_nve.thermo'
         PRINT *, 'Processing file: ', TRIM(xyz_fname)
 
         OPEN(UNIT=unit_in, FILE=TRIM(xyz_fname), STATUS='OLD', ACTION='READ', IOSTAT=ios)
@@ -88,7 +89,7 @@ PROGRAM ensemble_avg
 
     ! == 3. Calculate averages and standard deviations and write to file ==
     unit_out = 22
-    OUTPUT_FILE = '../result/ensemble_avg_quench_eq.txt'
+    OUTPUT_FILE = '../result/ensemble_avg_andersen_product.txt'
     OPEN(UNIT=unit_out, FILE=OUTPUT_FILE, STATUS='REPLACE', ACTION='WRITE', IOSTAT=ios)
     IF (ios /= 0) THEN
         PRINT *, 'Error opening output file: ', OUTPUT_FILE
