@@ -3,7 +3,7 @@ PROGRAM ensemble_avg
 
     INTEGER, PARAMETER :: NUM_ENSEMBLES = 5
     INTEGER            :: i, j, ios, frame_count, unit_in, unit_out
-    CHARACTER(LEN=200) :: xyz_fname, OUTPUT_FILE
+    CHARACTER(LEN=200) :: SIMULATION_NAME, xyz_fname, OUTPUT_FILE
     CHARACTER(LEN=500) :: dummy_line, header
 
     ! Allocate arrays for ensemble data
@@ -18,9 +18,17 @@ PROGRAM ensemble_avg
     DOUBLE PRECISION :: temp_std, pressure_atm_std, pe_std, ke_std, Etot_std, vol_std, density_std
 
     ! == 1. Initialization and Memory Allocation based on the first file ==
+
+    open(UNIT=10, FILE='ensemble.inp', STATUS='OLD', ACTION='READ', IOSTAT=ios)
+    read(10, *, IOSTAT=ios) SIMULATION_NAME
+    close(10)
+    PRINT *, 'Simulation Name: ', TRIM(SIMULATION_NAME)
+    PRINT *, 'Number of Ensembles: ', NUM_ENSEMBLES
+
+
     unit_in = 11
-    write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', 1, '_andersen/', 'NTOC_ver1_', 1, &
-    '_andersen_product_nve.thermo'
+    write(xyz_fname, '(A,A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_', trim(SIMULATION_NAME), 1, '/', trim(SIMULATION_NAME), 1, &
+    '_product_nve.thermo'
     
     PRINT *, 'Initializing with file: ', TRIM(xyz_fname)
 
@@ -64,8 +72,8 @@ PROGRAM ensemble_avg
 
     ! == 2. Read data from all ensemble files ==
     DO i = 1, NUM_ENSEMBLES
-        write(xyz_fname, '(A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_NTOC_ver1_', i, '_andersen/', 'NTOC_ver1_', i, &
-         '_andersen_product_nve.thermo'
+        write(xyz_fname, '(A,A,A,I0,A,A,I0,A)') '../thermo/', 'thermo_', trim(SIMULATION_NAME), i, '/', trim(SIMULATION_NAME), i, &
+         '_product_nve.thermo'
         PRINT *, 'Processing file: ', TRIM(xyz_fname)
 
         OPEN(UNIT=unit_in, FILE=TRIM(xyz_fname), STATUS='OLD', ACTION='READ', IOSTAT=ios)
@@ -89,7 +97,7 @@ PROGRAM ensemble_avg
 
     ! == 3. Calculate averages and standard deviations and write to file ==
     unit_out = 22
-    OUTPUT_FILE = '../result/ensemble_avg_andersen_product.txt'
+    OUTPUT_FILE = '../result/ensemble_product.txt'
     OPEN(UNIT=unit_out, FILE=OUTPUT_FILE, STATUS='REPLACE', ACTION='WRITE', IOSTAT=ios)
     IF (ios /= 0) THEN
         PRINT *, 'Error opening output file: ', OUTPUT_FILE

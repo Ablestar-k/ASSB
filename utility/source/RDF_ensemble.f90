@@ -36,7 +36,7 @@ program ensemble_rdf_analyzer
     ! Main loop over ensemble members
     ! =============================
     do i = 1, NUM_ENSEMBLES
-        write(dir_part, '(A,I0,A)') 'dump_', SIMULATION_NAME, '_', i
+        write(dir_part, '(A,A,I0,A)') 'dump_', SIMULATION_NAME, '_', i
         write(file_part, '(I0,A)')  i, '_product.xyz'
         xyz_fname = trim(dir_part)//'/'//trim(file_part)
         print *, 'Processing: ', trim(xyz_fname)

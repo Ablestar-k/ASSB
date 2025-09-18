@@ -68,7 +68,7 @@ THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
 DUMP_FREQ = 1000    # Frequency for trajectory data (Every 2 ps)
 
 # --- File and Path Definitions ---
-SIMULATION_NAME = f'NTOC_ver1_{ENSEMBLE_INDEX}_berendsen'
+SIMULATION_NAME = f'NTOC_ver3_{ENSEMBLE_INDEX}'
 INITIAL_PATH = f'../initial'
 DUMP_PATH = f'../dump/dump_{SIMULATION_NAME}'
 THERMO_PATH = f'../thermo/thermo_{SIMULATION_NAME}'

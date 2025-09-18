@@ -2,138 +2,138 @@ program ensemble_vanhove_analyzer
     use, intrinsic :: iso_fortran_env, only: real64, error_unit
     implicit none
 
+    ! Input parameters
     character(len=256) :: SIMULATION_NAME
     integer :: NUM_ENSEMBLES
     character(len=8) :: SPECIES
     double precision :: BINSIZE, MAX_R
-    integer :: T_INTERVAL, N_T_DELTAS
-    integer, allocatable :: T_DELTAS(:)
-    integer :: i, j, k, n_bins, stat
-    character(len=512) :: xyz_fname, dir_part, file_part, out_fname
-    double precision, allocatable :: all_gs_values(:,:,:)
-    double precision, allocatable :: current_gs(:,:)
-    double precision, allocatable :: mean_gs_arr(:,:), std_gs_arr(:,:)
+    integer :: T_DELTA, MAX_T_DELTA 
 
-    ! === Read Input File ===
-    open(unit=99, file='vanhove.inp', status='old', action='read')
+    ! Internal variables
+    integer :: i, j, k, dt, n_bins, stat
+    character(len=512) :: xyz_fname, dir_part, file_part, out_fname
+    
+    ! Data storage
+    double precision, allocatable :: all_gs_values(:,:,:) 
+    double precision, allocatable :: current_gs(:,:)      
+    double precision, allocatable :: mean_gs_arr(:,:), std_gs_arr(:,:) 
+
+    open(unit=99, file='vanhove_all.inp', status='old', action='read')
     read(99, *) SIMULATION_NAME, NUM_ENSEMBLES
     read(99, *) SPECIES
     read(99, *) BINSIZE, MAX_R
-    read(99, *) T_INTERVAL
-    read(99, *) N_T_DELTAS
-    allocate(T_DELTAS(N_T_DELTAS))
-    read(99, *) T_DELTAS(:)
+    read(99, *) T_DELTA, MAX_T_DELTA
     close(99)
 
     n_bins = ceiling(MAX_R / BINSIZE)
 
-    ! === Allocate Memory ===
-    allocate(all_gs_values(n_bins, N_T_DELTAS, NUM_ENSEMBLES), stat=stat)
+    ! === Allocate Memory (MODIFIED size) ===
+    allocate(all_gs_values(n_bins, MAX_T_DELTA, NUM_ENSEMBLES), stat=stat)
     if (stat /= 0) stop 'Allocation error for all_gs_values'
-    allocate(current_gs(n_bins, N_T_DELTAS), stat=stat)
+    allocate(current_gs(n_bins, MAX_T_DELTA), stat=stat)
     if (stat /= 0) stop 'Allocation error for current_gs'
     all_gs_values = 0.0d0
 
     print *, '--- Starting Ensemble Van Hove Gs(r,t) Analysis ---'
     print *, 'Species: ', trim(SPECIES)
-    print *, 'Time Deltas (frames): ', T_DELTAS
+    print *, 'Calculating for all delta_t up to: ', MAX_T_DELTA
 
     ! =====================================
     !  Main loop over each ensemble member
     ! =====================================
     do i = 1, NUM_ENSEMBLES
         write(dir_part, '(A,A,A,I0)') '../dump/dump_', trim(SIMULATION_NAME), '_', i
-        write(file_part, '(I0,A)') i, '_product.xyz'
+        write(file_part, '(I0,A,A)') i, '_product', '.xyz'
         xyz_fname = trim(dir_part) // '/' // trim(file_part)
         print *, 'Processing: ', trim(xyz_fname)
 
-        call calculate_vanhove_single(xyz_fname, SPECIES, n_bins, MAX_R, T_DELTAS, current_gs)
+        call calculate_vanhove_single(xyz_fname, SPECIES, n_bins, MAX_R, MAX_T_DELTA, current_gs)
         all_gs_values(:, :, i) = current_gs(:, :)
     end do
 
     print *, ''
     print *, '--- Aggregating results and calculating statistics ---'
 
-    allocate(mean_gs_arr(n_bins, N_T_DELTAS), std_gs_arr(n_bins, N_T_DELTAS))
+    allocate(mean_gs_arr(n_bins, MAX_T_DELTA), std_gs_arr(n_bins, MAX_T_DELTA))
 
     ! === Statistics calculation ===
-    do k = 1, N_T_DELTAS
-        do i = 1, n_bins
+    do dt = 1, MAX_T_DELTA  
+        do i = 1, n_bins 
             block_stats: block
                 double precision :: mean_val, sum_sq, std_val
-                mean_val = sum(all_gs_values(i, k, :)) / dble(NUM_ENSEMBLES)
-                sum_sq = sum((all_gs_values(i, k, :) - mean_val)**2)
+                mean_val = sum(all_gs_values(i, dt, :)) / dble(NUM_ENSEMBLES)
+                sum_sq = sum((all_gs_values(i, dt, :) - mean_val)**2)
                 
                 if (NUM_ENSEMBLES > 1) then
                     std_val = sqrt(sum_sq / dble(NUM_ENSEMBLES - 1))
                 else
                     std_val = 0.0d0
                 end if
-                mean_gs_arr(i, k) = mean_val
-                std_gs_arr(i, k) = std_val
+                mean_gs_arr(i, dt) = mean_val
+                std_gs_arr(i, dt) = std_val
             end block block_stats
         end do
     end do
 
-    ! === Write Output File ===
-    write(out_fname, '(A,A,A)') '../result/gsrt_ensemble_average_', trim(SPECIES), '.dat'
+    write(out_fname, '(A,A,A)') '../result/gsrt_all_', trim(SPECIES), '.dat'
     open(unit=50, file=trim(out_fname), status='replace')
     
-    do k = 1, N_T_DELTAS
-        write(50, '(A, I0, A)') '# t_delta = ', T_DELTAS(k) * T_INTERVAL, '(ps)'
+    ! === Write Output File ===
+    do dt = 1, MAX_T_DELTA
+        write(50, '(A, I0, A)') '# t_delta (frames) = ', dt * T_DELTA, 'ps'
         write(50, '(A24, A20, A20)') '# r (Angstrom)', 'Gs(r,t)_mean', 'Gs(r,t)_std'
         do i = 1, n_bins
             block_write: block
                 double precision :: r_center
                 r_center = (dble(i) - 0.5d0) * BINSIZE
-                write(50, '(F25.8, F20.8, F20.8)') r_center, mean_gs_arr(i, k), std_gs_arr(i, k)
+                write(50, '(F25.8, F20.8, F20.8)') r_center, mean_gs_arr(i, dt), std_gs_arr(i, dt)
             end block block_write
         end do
-        write(50,*) ''
-        write(50,*) ''
+        write(50,*) '' 
+        write(50,*) '' 
     end do
     close(50)
 
     print *, '--- Analysis complete. Output saved to: ', trim(out_fname), ' ---'
 
-    deallocate(T_DELTAS, all_gs_values, current_gs, mean_gs_arr, std_gs_arr)
+    deallocate(all_gs_values, current_gs, mean_gs_arr, std_gs_arr)
 
 contains
 
 ! ==========================================================
 !  Calculates Gs(r,t) for a single trajectory file
 ! ==========================================================
-subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, t_deltas, gs_out)
+subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_delta, gs_out)
     implicit none
     character(len=*), intent(in)  :: xyz_fname, species
     integer, intent(in)           :: n_bins
     double precision, intent(in)  :: max_r
-    integer, intent(in)           :: t_deltas(:)
-    double precision, intent(out) :: gs_out(n_bins, size(t_deltas))
+    integer, intent(in)           :: max_t_delta  
+    double precision, intent(out) :: gs_out(n_bins, max_t_delta)
 
     type frame_data
         integer :: n_atoms
         double precision :: H(3,3), Hinv(3,3)
         double precision, allocatable :: x(:), y(:), z(:)
         character(len=10), allocatable :: sym(:)
-    end type frame_data
-    
+    end type frame_data 
+
     integer :: ios, i, j, k, p1, p2, num_frames, t0_idx, tf_idx
     integer :: n_t, n_species
     integer :: bin_index
     double precision :: binsize, dist, pi, r, shell_vol
     double precision :: dx, dy, dz
     character(len=1024) :: header_line, aline, lattice_str
-    
-    type(frame_data), allocatable :: trajectory(:)
-    integer(8), allocatable :: hist_sum(:,:)
-    integer, allocatable :: n_origins(:)
-    integer, allocatable :: species_indices(:)
 
-    ! === Initialization ===
+    type(frame_data), allocatable :: trajectory(:)
+    integer(8), allocatable :: hist_sum(:,:) 
+    integer, allocatable :: n_origins(:)     
+    integer, allocatable :: species_indices(:)
+    integer :: dt 
+
+    ! --- Initialization ---
     pi = 4.0d0 * datan(1.0d0)
     binsize = max_r / dble(n_bins)
-    n_t = size(t_deltas)
     gs_out = 0.0d0
 
     open(unit=10, file=trim(xyz_fname), status='old', action='read', iostat=ios)
@@ -143,6 +143,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, t_deltas,
     end if
     num_frames = 0
     rewind(10)
+
     do
         read(10,*, iostat=ios) p1
         if (ios /= 0) exit
@@ -206,41 +207,47 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, t_deltas,
         end if
     end do
 
-    allocate(hist_sum(n_bins, n_t), n_origins(n_t))
+    allocate(hist_sum(n_bins, max_t_delta), n_origins(max_t_delta))
     hist_sum = 0
     n_origins = 0
-    do t0_idx = 1, num_frames
-        do k = 1, n_t
-            tf_idx = t0_idx + t_deltas(k)
+    
+    do t0_idx = 1, num_frames    
+        do dt = 1, max_t_delta   
+            tf_idx = t0_idx + dt
             if (tf_idx > num_frames) cycle
-            n_origins(k) = n_origins(k) + 1
-            do i = 1, n_species
-                p1 = species_indices(i)
+            
+            n_origins(dt) = n_origins(dt) + 1
+            
+            do i = 1, n_species    
+                p1 = species_indices(i) 
                 dx = trajectory(tf_idx)%x(p1) - trajectory(t0_idx)%x(p1)
                 dy = trajectory(tf_idx)%y(p1) - trajectory(t0_idx)%y(p1)
                 dz = trajectory(tf_idx)%z(p1) - trajectory(t0_idx)%z(p1)
+                
                 call min_image_dr(trajectory(t0_idx)%H, trajectory(t0_idx)%Hinv, dx, dy, dz)
                 dist = sqrt(dx*dx + dy*dy + dz*dz)
+
                 if (dist < max_r) then
                     bin_index = ceiling(dist / binsize)
                     if (bin_index > 0 .and. bin_index <= n_bins) then
-                         hist_sum(bin_index, k) = hist_sum(bin_index, k) + 1
+                         hist_sum(bin_index, dt) = hist_sum(bin_index, dt) + 1
                     end if
                 end if
+                
             end do
         end do
     end do
- 
-    do k = 1, n_t
-        if (n_origins(k) == 0) cycle
+
+    do dt = 1, max_t_delta
+        if (n_origins(dt) == 0) cycle
         do i = 1, n_bins
             r = (dble(i) - 0.5d0) * binsize
             if (r > 1.d-8) then
                 shell_vol = 4.0d0 * pi * r**2 * binsize
-                gs_out(i, k) = (dble(hist_sum(i,k)) / dble(n_origins(k))) &
+                gs_out(i, dt) = (dble(hist_sum(i,dt)) / dble(n_origins(dt))) &
                              / dble(n_species) / shell_vol
             else
-                gs_out(i, k) = 0.0d0
+                gs_out(i, dt) = 0.0d0
             end if
         end do
     end do
@@ -250,6 +257,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, t_deltas,
         deallocate(trajectory(i)%x, trajectory(i)%y, trajectory(i)%z, trajectory(i)%sym)
     end do
     deallocate(trajectory)
+    
 end subroutine calculate_vanhove_single
 
 ! ===================================================================

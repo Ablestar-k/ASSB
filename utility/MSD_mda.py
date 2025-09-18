@@ -7,7 +7,7 @@ import pandas as pd
 import os
 
 
-BASE_DIR_NAME = "../dump/dump_NTOC_ver1_{}"
+BASE_DIR_NAME = "../dump/dump_NTOC_ver3_{}"
 NUM_ENSEMBLES = 5
 ATOM_GROUP_TO_ANALYZE = "name Na"
 SIMULATION_DT = 2.0

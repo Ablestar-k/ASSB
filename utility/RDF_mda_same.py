@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-BASE_DIR_NAME = "../dump/dump_NTOC_ver1_{}"
+BASE_DIR_NAME = "../dump/dump_NTOC_ver3_{}"
 NUM_ENSEMBLES = 5
 ATOM_GROUP_TO_ANALYZE = "name Cl"
 NBINS = 400
