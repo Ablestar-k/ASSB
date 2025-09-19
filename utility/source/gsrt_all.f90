@@ -27,7 +27,8 @@ program ensemble_vanhove_analyzer
 
     n_bins = ceiling(MAX_R / BINSIZE)
 
-    ! === Allocate Memory (MODIFIED size) ===
+    ! === Allocate Memory ===
+    ! all_gs_values(distance count ; time interval ; ensemble index)
     allocate(all_gs_values(n_bins, MAX_T_DELTA, NUM_ENSEMBLES), stat=stat)
     if (stat /= 0) stop 'Allocation error for all_gs_values'
     allocate(current_gs(n_bins, MAX_T_DELTA), stat=stat)
@@ -113,9 +114,9 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
 
     type frame_data
         integer :: n_atoms
-        double precision :: H(3,3), Hinv(3,3)
+        double precision :: H(3,3), Hinv(3,3) ! Lattice matrix, Invert Lattice matrix
         double precision, allocatable :: x(:), y(:), z(:)
-        character(len=10), allocatable :: sym(:)
+        character(len=10), allocatable :: sym(:) ! atom name
     end type frame_data 
 
     integer :: ios, i, j, k, p1, p2, num_frames, t0_idx, tf_idx
@@ -131,7 +132,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
     integer, allocatable :: species_indices(:)
     integer :: dt 
 
-    ! --- Initialization ---
+    ! === Initialization ===
     pi = 4.0d0 * datan(1.0d0)
     binsize = max_r / dble(n_bins)
     gs_out = 0.0d0
@@ -144,8 +145,9 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
     num_frames = 0
     rewind(10)
 
+    ! === Get Data from first file ===
     do
-        read(10,*, iostat=ios) p1
+        read(10,*, iostat=ios) p1 ! Number of Atoms
         if (ios /= 0) exit
         read(10,'(A)') header_line
         do i = 1, p1
@@ -160,6 +162,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
         close(10); return
     end if
 
+    ! === Data Loading ===
     allocate(trajectory(num_frames))
     do i = 1, num_frames
         read(10,*) trajectory(i)%n_atoms
@@ -168,6 +171,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
                  trajectory(i)%y(trajectory(i)%n_atoms), &
                  trajectory(i)%z(trajectory(i)%n_atoms), &
                  trajectory(i)%sym(trajectory(i)%n_atoms))
+
         do j = 1, trajectory(i)%n_atoms
             read(10,'(A)') aline
             if (.not. safe_parse_atom_line(aline, trajectory(i)%sym(j), &
@@ -176,6 +180,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
                 stop
             end if
         end do
+
         p1 = index(header_line, 'Lattice="')
         p2 = index(header_line(p1+9:), '"')
         lattice_str = header_line(p1+9 : (p1+8)+p2-1)
@@ -187,6 +192,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
     end do
     close(10)
     
+    ! === Find Target species ===
     n_species = 0
     do i = 1, trajectory(1)%n_atoms
         if (trim(trajectory(1)%sym(i)) == trim(species)) then
@@ -198,6 +204,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
         write(error_unit,*) 'WARNING: Species not found in file: ', trim(xyz_fname)
         deallocate(trajectory); return
     end if
+
     allocate(species_indices(n_species))
     k = 0
     do i = 1, trajectory(1)%n_atoms
@@ -207,12 +214,13 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
         end if
     end do
 
+    ! === Main Loop ===
     allocate(hist_sum(n_bins, max_t_delta), n_origins(max_t_delta))
     hist_sum = 0
     n_origins = 0
     
-    do t0_idx = 1, num_frames    
-        do dt = 1, max_t_delta   
+    do t0_idx = 1, num_frames ! Set zero point(t0)
+        do dt = 1, max_t_delta   ! Set time interval
             tf_idx = t0_idx + dt
             if (tf_idx > num_frames) cycle
             
@@ -238,6 +246,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
         end do
     end do
 
+    ! === Normalization ===
     do dt = 1, max_t_delta
         if (n_origins(dt) == 0) cycle
         do i = 1, n_bins

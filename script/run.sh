@@ -1,8 +1,8 @@
 #!/bin/bash
 
-GPU_LIST=(2 3 4 5 1)
+GPU_LIST=(0 1)
 
-ENSEMBLE_LIST=(1 2 3 4 5)
+ENSEMBLE_LIST=(1 2)
 
 CORES_PER_JOB=1
 

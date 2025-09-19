@@ -60,7 +60,7 @@ def plot_gsrt_heatmap(r, t, gs, species_name, output_filename="../result/van_hov
 
     t_step = t[1] - t[0] if len(t) > 1 else 1
     r_step = r[1] - r[0] if len(r) > 1 else 1
-    
+
     t_edges = np.append(t, t[-1] + t_step)
     r_edges = np.append(r, r[-1] + r_step)
 
