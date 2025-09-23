@@ -13,3 +13,29 @@ Supercell vectors:
 --- Loading ML potential ---
 Checkpoint path: ./mattersim-v1.0.0-5M.pth
 [32m2025-09-18 11:04:34.814[0m | [1mINFO    [0m | [36mmattersim.forcefield.potential[0m:[36mfrom_checkpoint[0m:[36m893[0m - [1mLoading the model from ./mattersim-v1.0.0-5M.pth[0m
+Successfully attached potential to device: 'cuda'
+
+ Apply Andersen thermostat for 3 times to stablized temperature.
+
+ Start 1th NVE
+--- Benchmark for 6-1. NVE Pre_Production: 630.17 ps/day ---
+
+ Start 1th NVT
+--- Benchmark for 6-1. NVT Pre_Production: 629.58 ps/day ---
+
+ Start 2th NVE
+--- Benchmark for 6-2. NVE Pre_Production: 630.68 ps/day ---
+
+ Start 2th NVT
+--- Benchmark for 6-2. NVT Pre_Production: 630.15 ps/day ---
+
+ Start 3th NVE
+--- Benchmark for 6-3. NVE Pre_Production: 626.81 ps/day ---
+
+ Start 3th NVT
+--- Benchmark for 6-3. NVT Pre_Production: 521.15 ps/day ---
+--- Pre Production Run Finished. ---
+
+--- Starting Production Run (NVE) at 300.0 K for 1500.0 ps ---
+--- Benchmark for 7. Production (NVE): 594.67 ps/day ---
+--- Production Run Finished. Simulation Complete. ---
