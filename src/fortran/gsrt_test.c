@@ -16,9 +16,9 @@ int ***atom;
 double ***coord;
 double box_x, box_y, box_z;
 
-int numLi, numCl, numAl;
+int numNa, numTa, numO, numCl;
 
-int readTraj(void);
+int readTraj_xyz(void);
 
 FILE *fp_in;
 FILE *fp_vanHove_diffusion;
@@ -33,7 +33,7 @@ double get_angle(double *, double *);
 
 int main(int argc, char *argv[]){
 	if (argc != 5){
-		printf("USAGE : ./scattering.x ***.lammpstrj vanHove_diffusion.out vanHove_Al.out vanHove_rotation.out\n");
+		printf("USAGE : ./scattering.x ***.xyz vanHove_diffusion.out vanHove_Al.out vanHove_rotation.out\n");
 		exit(1);
 	}
 	fp_in = fopen(argv[1], "r");
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]){
 	atom = (int***)malloc(sizeof(int**) * MAXTIMESTEP);
 	coord = (double***)malloc(sizeof(double**) * MAXTIMESTEP);
 
-	readTraj();
+	readTraj_xyz();
 
 	printf("\n\t\t< FILE SUMMARY >\n\n");
 	printf("\tNumber of Timesteps : %d\n", numTraj);
@@ -54,20 +54,23 @@ int main(int argc, char *argv[]){
 	box_y = (box[0][1][1] - box[0][1][0]);
 	box_z = (box[0][2][1] - box[0][2][0]);
 
-	numLi = 0; numCl = 0; numAl = 0;
+	numNa = 0; numTa = 0; numO = 0; numCl = 0;
 	for (int i = 0; i < numAtoms[0]; i++){
 		switch(atom[0][i][1]){
-			case 1: numLi += 1; break;
-			case 2: numCl += 1; break;
-			case 3: numAl += 1; break;
+			case 1: numNa++; break;
+			case 2: numTa++; break;
+			case 3: numO++;  break;
+            case 4: numCl++; break;
 		}
 	}
-	printf("\tbox_x = %lf\n", box_x * 2.0);
-	printf("\tbox_y = %lf\n", box_y * 2.0);
-	printf("\tbox_z = %lf\n", box_z * 2.0);
-	printf("\tnumLi = %d\n", numLi);
-	printf("\tnumCl = %d\n", numCl);
-	printf("\tnumAl = %d\n", numAl);
+
+	printf("\tbox_x = %lf\n", box_x);
+	printf("\tbox_y = %lf\n", box_y);
+	printf("\tbox_z = %lf\n", box_z);
+	printf("\tnumNa = %d\n", numNa);
+	printf("\tnumTa = %d\n", numTa);
+	printf("\tnumO  = %d\n", numO);
+    printf("\tnumCl = %d\n", numCl);
 	printf("\n");
 
 	vanHove_diffusion();
@@ -90,15 +93,15 @@ void vanHove_rotation(){
 	double ***nearVector = (double ***)malloc(sizeof(double **) * numTraj);
 	for (int t = 0; t < numTraj; t++){
 		if (!(t % 100)) printf("\t t = %d...\n", t);
-		int *temp = (int *)malloc(sizeof(int) * numAl);
-		double **tempVector = (double **)malloc(sizeof(double *) * numAl);
+		int *temp = (int *)malloc(sizeof(int) * numNa);
+		double **tempVector = (double **)malloc(sizeof(double *) * numNa);
 		int alIdx = 0;
-		for (int i = 0; i < numAl; i++){ temp[i] = -1; }
-		for (int i = 0; alIdx < numAl; i++){
+		for (int i = 0; i < numNa; i++){ temp[i] = -1; }
+		for (int i = 0; alIdx < numNa; i++){
 			double *vector = (double *)malloc(sizeof(double) * 3);
 			if (atom[t][i][1] != 3) continue;
 			int nearest = 0; double nearestDist = 999.0; int clIdx = 0;
-			for (int j = 0; clIdx < numCl; j++){
+			for (int j = 0; clIdx < numNa; j++){
 				if (i == j) continue;
 				if (atom[t][j][1] != 2) continue;
 				double dx = coord[t][j][0] - coord[t][i][0];
@@ -133,8 +136,8 @@ void vanHove_rotation(){
 		for (int i = 0; i < NUMBINS; i++) temp[i] = 0.0;
 		for (int start = 0; start < numTraj - t; start += DELTA_T){
 			int alIdx = 0;
-			double normal = (double)(numTraj - t) / DELTA_T * numAl;
-			for (int i = 0; alIdx < numAl; i++){
+			double normal = (double)(numTraj - t) / DELTA_T * numNa;
+			for (int i = 0; alIdx < numNa; i++){
 				if (atom[t][i][1] != 3) continue;
 				
 				int j = nearList[start][alIdx];
@@ -195,8 +198,8 @@ void vanHove_diffusion(){
 		for (int i = 0; i < NUMBINS; i++) temp[i] = 0.0;
 		for (int start = 0; start < numTraj - t; start += DELTA_T){
 			int liIdx = 0;
-			double normal = (double)(numTraj - t) / DELTA_T * numLi * binsize;
-			for (int i = 0; liIdx < numLi; i++){
+			double normal = (double)(numTraj - t) / DELTA_T * numNa * binsize;
+			for (int i = 0; liIdx < numNa; i++){
 				if (atom[t][i][1] != 1) continue;
 				double dx = coord[start + t][i][0] - coord[start][i][0];
 				double dy = coord[start + t][i][1] - coord[start][i][1];
@@ -231,8 +234,8 @@ void vanHove_Al(){
 		for (int i = 0; i < NUMBINS; i++) temp[i] = 0.0;
 		for (int start = 0; start < numTraj - t; start += DELTA_T){
 			int alIdx = 0;
-			double normal = (double)(numTraj - t) / DELTA_T * numAl * binsize;
-			for (int i = 0; alIdx < numAl; i++){
+			double normal = (double)(numTraj - t) / DELTA_T * numNa * binsize;
+			for (int i = 0; alIdx < numNa; i++){
 				if (atom[t][i][1] != 3) continue;
 				double dx = coord[start + t][i][0] - coord[start][i][0];
 				double dy = coord[start + t][i][1] - coord[start][i][1];
@@ -256,87 +259,76 @@ void vanHove_Al(){
 	}
 }
 
+int readTraj_xyz(void){
+    char line[LINESIZE];
+    char symbol[16];
+    double x, y, z;
+    int current_natoms;
 
-int readTraj(void){
-	char *iostat;
-	char line[LINESIZE];
+    while(fscanf(fp_in, "%d", &current_natoms) == 1) {
+        if (numTraj >= MAXTIMESTEP) {
+            printf("Warning: Maximum number of timesteps (%d) reached.\n", MAXTIMESTEP);
+            break;
+        }
 
-	while(1){
-		iostat = fgets(line, LINESIZE, fp_in);
-		// printf("s", line);
+        numAtoms[numTraj] = current_natoms;
+        fgets(line, LINESIZE, fp_in);
+        fgets(line, LINESIZE, fp_in);
 
-		if (!iostat) break;
-		else if (strcmp(line, "ITEM: TIMESTEP\n") == 0){
-			int temp;
-			fscanf(fp_in, "%d", &temp);
-			timestep[numTraj] = temp;
-			// printf("timestep : %d\n", timestep[numTraj]);
-		}
-		else if (strcmp(line, "ITEM: NUMBER OF ATOMS\n") == 0){
-			int temp;
-			fscanf(fp_in, "%d", &temp);
-			numAtoms[numTraj] = temp;
-			// printf("numAtoms : %d\n", numAtoms[numTraj]);
-		}
-		else if (strcmp(line, "ITEM: BOX BOUNDS pp pp pp\n") == 0){
-			double temp1, temp2;
-			for (int i = 0; i < 3; i++){
-				fscanf(fp_in, "%lf %lf", &temp1, &temp2);
-				box[numTraj][i][0] = temp1;
-				box[numTraj][i][1] = temp2;
-			}
-			/*
-			printf("box :\n%f %f\n%f %f\n%f %f\n",
-			        box[numTraj][0][0], box[numTraj][0][1],
-			        box[numTraj][1][0], box[numTraj][1][1],
-			        box[numTraj][2][0], box[numTraj][2][1]);
-			*/
-		}
-		else if (strcmp(line, "ITEM: ATOMS id type x y z\n") == 0){
-			double x, y, z;
-			int type, id, ix, iy, iz;
+        char* lattice_ptr = strstr(line, "Lattice=\"");
+        if (lattice_ptr != NULL) {
+            lattice_ptr += 9;
+            double h[9];
+            sscanf(lattice_ptr, "%lf %lf %lf %lf %lf %lf %lf %lf %lf",
+                   &h[0], &h[1], &h[2], &h[3], &h[4], &h[5], &h[6], &h[7], &h[8]);
+            
+            box[numTraj][0][0] = 0.0; box[numTraj][0][1] = h[0];
+            box[numTraj][1][0] = 0.0; box[numTraj][1][1] = h[4];
+            box[numTraj][2][0] = 0.0; box[numTraj][2][1] = h[8];
+        } else {
+            printf("FATAL: Lattice information not found in frame %d. Aborting.\n", numTraj);
+            exit(1);
+        }
 
-			double boxlength[3] = {box[numTraj][0][1] - box[numTraj][0][0],
-					       box[numTraj][1][1] - box[numTraj][1][0],
-					       box[numTraj][2][1] - box[numTraj][2][0]};
+        int** atomPerTraj = (int**)malloc(sizeof(int*) * numAtoms[numTraj]);
+        double** coordPerTraj = (double**)malloc(sizeof(double*) * numAtoms[numTraj]);
 
-			int **atomPerTraj;
-			atomPerTraj = (int**)malloc(sizeof(int*) * numAtoms[numTraj]);
-			double **coordPerTraj;
-			coordPerTraj = (double**)malloc(sizeof(double*) * numAtoms[numTraj]);
+        for (int i = 0; i < numAtoms[numTraj]; i++) {
+            atomPerTraj[i] = (int*)malloc(sizeof(int) * 2);
+            coordPerTraj[i] = (double*)malloc(sizeof(double) * 3);
 
-			for (int i = 0; i < numAtoms[numTraj]; i++){
-				int *atomTemp;
-				atomTemp = (int*)malloc(sizeof(int) * 2);
-				double *coordTemp;
-				coordTemp = (double*)malloc(sizeof(double) * 3);
+			char line_buffer[LINESIZE];
+            if (fgets(line_buffer, LINESIZE, fp_in) == NULL) {
+                printf("ERROR: Unexpected end of file or read error in frame %d\n", numTraj);
+                exit(1);
+            }
 
-				fscanf(fp_in, "%d %d %lf %lf %lf",
-				       &id, &type, &x, &y, &z);
+            if (sscanf(line_buffer, "%s %lf %lf %lf", symbol, &x, &y, &z) < 4) {
+                printf("ERROR: Failed to parse atom line %d in frame %d\n", i + 1, numTraj);
+                exit(1);
+            }
+        
+            atomPerTraj[i][0] = i + 1;
 
-				atomTemp[0] = id;
-				atomTemp[1] = type;
-				atomPerTraj[i] = atomTemp;
+           
+            if (strcmp(symbol, "Na") == 0)      atomPerTraj[i][1] = 1;
+            else if (strcmp(symbol, "Ta") == 0) atomPerTraj[i][1] = 2;
+            else if (strcmp(symbol, "O") == 0)  atomPerTraj[i][1] = 3;
+            else if (strcmp(symbol, "Cl") == 0) atomPerTraj[i][1] = 4;
+            else                                atomPerTraj[i][1] = 0; 
+            
+            coordPerTraj[i][0] = x;
+            coordPerTraj[i][1] = y;
+            coordPerTraj[i][2] = z;
+        }
 
-				coordTemp[0] = x;
-				coordTemp[1] = y;
-				coordTemp[2] = z;
-				coordPerTraj[i] = coordTemp;
+        atom[numTraj] = atomPerTraj;
+        coord[numTraj] = coordPerTraj;
+        timestep[numTraj] = numTraj;
 
-				/*
-				printf("timestep : %d id : %d, type : %d\n",
-				       timestep[numTraj], atomPerTraj[i][0], atomPerTraj[i][1]);
-				printf("\tx : %f y : %f z : %f\n",
-				       coordPerTraj[i][0],
-				       coordPerTraj[i][1],
-				       coordPerTraj[i][2]);
-				*/
-			}
-			atom[numTraj] = atomPerTraj;
-			coord[numTraj] = coordPerTraj;
-			numTraj += 1;
-		}
-	}
-	fclose(fp_in);
-	return 0;
+        numTraj++;
+    }
+
+    fclose(fp_in);
+    return 0;
 }

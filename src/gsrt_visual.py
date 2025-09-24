@@ -76,7 +76,7 @@ def plot_gsrt_heatmap(r, t, gs, species_name, output_filename="../result/van_hov
 
     ax.set_xlabel(r'Time (ps))', fontsize=14)
     ax.set_ylabel('Distance, $r$ (Å)', fontsize=14)
-    ax.set_title(f'Self-part of Van Hove Correlation Function $G_s(r, t)$ for {species_name}', fontsize=16)
+    ax.set_title(f'Self-part of Van Hove Correlation Function $G_s(r, t)$ of {species_name}', fontsize=16)
 
     ax.set_ylim(0, r.max())
     ax.set_xlim(t.min(), t.max())

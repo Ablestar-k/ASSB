@@ -28,7 +28,7 @@ program ensemble_msd_analyzer
     close(10)
 
     write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1
-    write(file_part, '(I1,A)') 1, '_quench.xyz'
+    write(file_part, '(I1,A)') 1, '_pre_product.xyz'
     !write(file_part, '(I1,A)') 1, '_product.xyz'
     xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
     call prescan_trajectory(xyz_fname, NUM_TOTAL_PARTICLES, TARGET_SPECIES_NAME, &
@@ -48,7 +48,7 @@ program ensemble_msd_analyzer
         allocate(current_disp_sum(TOTAL_TIME_MAX), stat=stat)
         
         write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', e
-        write(file_part, '(I1,A)') e, '_quench.xyz'
+        write(file_part, '(I1,A)') e, '_pre_product.xyz'
         !write(file_part, '(I1,A)') e, '_product.xyz'
         xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
         
@@ -104,7 +104,7 @@ program ensemble_msd_analyzer
     ! Write final output file
     !open(newunit=uout, file='../result/' // trim(TARGET_SPECIES_NAME)//'_MSD_ensemble_average.dat', &
     !    status='replace', action='write', iostat=ios)
-    open(newunit=uout, file='../result/' // trim(TARGET_SPECIES_NAME)//'_MSD_ensemble_average_quench.dat', &
+    open(newunit=uout, file='../result/' // trim(TARGET_SPECIES_NAME)//'_MSD_ensemble_average_pre_product.dat', &
         status='replace', action='write', iostat=ios)    
     if (ios /= 0) stop 'Error creating output file.'
 
@@ -116,7 +116,7 @@ program ensemble_msd_analyzer
     close(uout)
 
     !print *, "--- Analysis complete. Output saved to: MSD_ensemble_average.dat ---"
-    print *, "--- Analysis complete. Output saved to: MSD_ensemble_average_quench.dat ---"
+    print *, "--- Analysis complete. Output saved to: MSD_ensemble_average_pre_product.dat ---"
     deallocate(disp_sum_total, msd_per_ensemble, actual_times, mean_msd, std_msd, total_origins, target_indices)
 
 contains
