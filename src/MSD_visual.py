@@ -8,7 +8,8 @@ target_species = 'Na'
 
 #file_path = f"../result/{target_species}_MSD_ensemble_average.dat"
 #file_path = f"../result/{target_species}_MSD_ensemble_average.dat"
-file_path = f"../result/{target_species}_MSD_ensemble_average_pre_product.dat"
+#file_path = f"../result/{target_species}_MSD_ensemble_average_pre_product.dat"
+file_path = f"../result/{target_species}_MSD_ensemble_average_product.dat"
 column_names = [
     'Time(ps)', 'MSD_mean', 'MSD_std'
 ]
@@ -43,7 +44,7 @@ plt.fill_between(
 )
 
 #plt.title(f'{target_species} Time vs MSD', fontsize=16)
-plt.title(f'{target_species} Time vs MSD during quenching', fontsize=16)
+plt.title(f'{target_species} Time vs MSD during production', fontsize=16)
 plt.xlabel('Time (ps)', fontsize=12)
 plt.ylabel('MSD', fontsize=12)
 plt.xscale('log')
@@ -53,6 +54,7 @@ plt.grid(True)
 plt.tight_layout()
 #plt.savefig(os.path.join(output_path, f'{target_species}_MSD_avg.png'), dpi=300)
 #plt.savefig(os.path.join(output_path, f'{target_species}_MSD_quench_avg.png'), dpi=300)
-plt.savefig(os.path.join(output_path, f'{target_species}_MSD_pre_prod_avg.png'), dpi=300)
+#plt.savefig(os.path.join(output_path, f'{target_species}_MSD_pre_prod_avg.png'), dpi=300)
+plt.savefig(os.path.join(output_path, f'{target_species}_MSD_prod_avg.png'), dpi=300)
 #plt.show()
 plt.close()

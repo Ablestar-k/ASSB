@@ -17,7 +17,6 @@ program xyz_hop_analyzer
     integer            :: HOP_WINDOW_SIZE
     double precision   :: TIME_STEP_PS
 
-    ! === Data Storage ===
     type(frame_data), allocatable :: trajectory(:)
     integer :: num_frames, num_valid_times, n_species
     double precision, allocatable :: hop_values_matrix(:,:)
@@ -35,7 +34,7 @@ program xyz_hop_analyzer
     ! === 1. Read Trajectory Data ===
     call read_trajectory_from_xyz(XYZ_FNAME, trajectory, num_frames)
 
-    ! === 2. Calculate Hop Function using the C code's logic ===
+    ! === 2. Calculate Hop Function ===
     call calculate_hop(trajectory, num_frames, SPECIES, HOP_WINDOW_SIZE, &
                                 hop_values_matrix, num_valid_times, n_species)
 
@@ -45,7 +44,7 @@ program xyz_hop_analyzer
     end if
 
     ! === 3. Write Output File ===
-    write(out_fname, '(A,A,A)') './hop_per_atom_', trim(SPECIES), '.dat'
+    write(out_fname, '(A,A,A)') '../result/hop_per_atom_', trim(SPECIES), '.dat'
     open(unit=50, file=trim(out_fname), status='replace')
     write(50, '(A,A)') '# Per-atom hop function h_i(t) for species: ', trim(SPECIES)
     write(50, '(A)') '# CALCULATION METHOD: C-code logic (moving reference point)'
@@ -70,7 +69,6 @@ program xyz_hop_analyzer
     close(50)
     print *, '--- Analysis complete. Output saved to: ', trim(out_fname), ' ---'
 
-    ! Deallocate memory
     call deallocate_traj(trajectory, num_frames)
     if (allocated(hop_values_matrix)) deallocate(hop_values_matrix)
 
@@ -118,7 +116,6 @@ contains
 
         do j = 1, n_species
             p1 = species_indices(j)
-            ! Loop over all possible center times for the moving averages
             do t = window_half, num_frames - window_half + 1
                 ! Avg A: average of [t - window_half + 1, t]
                 call get_avg_pbc(trajectory, p1, t - window_half + 1, t, avg_pos_A_series(:, j, t))

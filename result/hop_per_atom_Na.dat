@@ -1,0 +1,3 @@
+# Per-atom hop function h_i(t) for species: Na
+# CALCULATION METHOD: C-code logic (moving reference point)
+# Window size = 6 frames, Timestep =     2.0000 ps

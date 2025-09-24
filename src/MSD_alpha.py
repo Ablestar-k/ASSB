@@ -5,9 +5,9 @@ import os
 
 ATOM_NAME = 'Na'
 INPUT_FILE_PATH = "../result"
-#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average.dat'
+INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_product.dat'
 #INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_quench.dat'
-INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_pre_product.dat'
+#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_pre_product.dat'
 
 INPUT_FILE = os.path.join(INPUT_FILE_PATH, INPUT_FILENAME)
 
@@ -46,6 +46,7 @@ ax.plot(time_lags[valid_indices][1:], alpha, color='green', linestyle='-', linew
 
 
 ax.axhline(1, color='gray', linestyle='--', label=r'$\alpha=1$ (Normal Diffusion)')
+ax.axvline(800, color='gray', linestyle='--', label='0.8ns')
 
 ax.set_xlabel('Time (ps)', fontsize=14)
 ax.set_ylabel(r'$\alpha$', fontsize=14)
@@ -59,12 +60,12 @@ ax.tick_params(axis='both', which='major', labelsize=12)
 
 fig.tight_layout()
 
-#output_fig_filename = f'{ATOM_NAME}_MSD_alpha.png'
+output_fig_filename = f'{ATOM_NAME}_MSD_alpha.png'
 #output_fig_filename = f'{ATOM_NAME}_MSD_alpha_quench.png'
-output_fig_filename = f'{ATOM_NAME}_MSD_alpha_pre_prod.png'
+#output_fig_filename = f'{ATOM_NAME}_MSD_alpha_pre_prod.png'
 output_fig_path = "../result"
 output_fig_file = os.path.join(output_fig_path, output_fig_filename)
 plt.savefig(output_fig_file, dpi=300)
 
-print("\nPlot successfully saved as 'alpha_vs_time.png'")
+print(f"\nPlot successfully saved as '{output_fig_file}'")
 plt.show()

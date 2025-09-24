@@ -145,7 +145,7 @@ print(f"Total Energy plot saved to 'potential_energy_avg.png'. Average Energy: {
 
 print("\nAll plots have been saved successfully as separate files.")
 
-# Total Energy
+# Kinetic Energy
 avg_KE_energy = df['KE'].mean()
 
 plt.figure(figsize=(10, 7))
@@ -160,9 +160,9 @@ plt.fill_between(
 )
 plt.axhline(y=avg_KE_energy, color='black', linestyle='--', label=f'Average: {avg_KE_energy:.2f} eV')
 
-plt.title('Total Energy vs. Time', fontsize=16)
+plt.title('Kinetic vs. Time', fontsize=16)
 plt.xlabel('Time (ps)', fontsize=12)
-plt.ylabel('Total Energy (eV)', fontsize=12)
+plt.ylabel('Kinetic (eV)', fontsize=12)
 plt.legend()
 plt.grid(True)
 plt.tight_layout()

@@ -158,9 +158,10 @@ void hop_function(){
 		// hop[time][hop value for every atom]
 		hop[t] = perTime;
 
-		fprintf(fp_out, "%d\t", t);
+		fprintf(fp_out, "%d\t", t*2);
 		for (int i = 0; i < numNa; i++){
 			fprintf(fp_out, "%lf\t", hop[t][i]);
+			// Dump interval 2ps
 		}
 		fprintf(fp_out, "\n");
 	}
