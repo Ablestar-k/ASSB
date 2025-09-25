@@ -19,6 +19,7 @@ from ase.geometry import wrap_positions
 from ase.md.andersen import Andersen
 from ase.md.nvtberendsen import NVTBerendsen
 from ase.md.langevin import Langevin
+from ase.md.nose_hoover_chain import NoseHooverChainNVT
 #from ase.md.npt import NPT
 from ase.md.verlet import VelocityVerlet # For NVE
 from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
@@ -57,11 +58,14 @@ QUENCHING_EQ_NVT_STEPS = 250000 # Production for 0.5 ns
 # Pre-Production (NVT+NVE) 
 # NVE(0.2 ns) -> NVT(0.1 ns) * 3
 # To solve temperature problem during production run
-PRE_PROD_NVT_RUN_STETS = 50000 # NVT Production for 0.1 ns
-PRE_PROD_NVE_RUN_STEPS = 100000 # NVE Production for 0.2 ns
+#PRE_PROD_NVT_RUN_STETS = 50000 # NVT Production for 0.1 ns
+#PRE_PROD_NVE_RUN_STEPS = 100000 # NVE Production for 0.2 ns
 
-# Production(NVE)
-PROD_NVE_RUN_STEPS = 750000 # Production for 1.5 ns 
+# Additional Equilibration (NVT)
+
+
+# Production(NVT)
+PROD_NVT_RUN_STEPS = 10000000 # Production for 20 ns 
 
 # I/O Parameters
 THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
@@ -75,7 +79,7 @@ THERMO_PATH = f'../thermo/thermo_{SIMULATION_NAME}'
 DATA_PATH = f'../data/data_{SIMULATION_NAME}'
 
 #INITIAL_STRUCTURE_FILE = f'../dump/dump_NTOC_ver1_{ENSEMBLE_INDEX}/NTOC_ver1_{ENSEMBLE_INDEX}_product_nve.traj'
-RESTART_FILE = f'../dump/dump_NTOC_ver3_{ENSEMBLE_INDEX}/NTOC_ver3_{ENSEMBLE_INDEX}_pre_product.traj'
+RESTART_FILE = f'../dump/dump_NTOC_ver1_{ENSEMBLE_INDEX}/NTOC_ver1_{ENSEMBLE_INDEX}_quench_eq_nvt.traj'
 
 # --- ML Potential ---
 CHECKPOINT_PATH = "./mattersim-v1.0.0-5M.pth"
@@ -87,21 +91,24 @@ HEATING_EQ_NVT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_heating_eq_nvt.data'
 QUENCHING_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_quench.data'
 QUENCHING_EQ_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_quench_eq_nvt.data'
 PRE_PRODUCT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_pre_product.data'
-PRODUCT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_product_nve.data'
+#PRODUCT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_product_nve.data'
+PRODUCT_DATA_FILE = f'{DATA_PATH}/{SIMULATION_NAME}_product_nvt.data'
 
 HEATING_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_heating.thermo'
 HEATING_EQ_NVT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_heating_eq_nvt.thermo'
 QUENCHING_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_quench.thermo'
 QUENCHING_EQ_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_quench_eq_nvt.thermo'
 PRE_PRODUCT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_pre_product.thermo'
-PRODUCT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_product_nve.thermo'
+#PRODUCT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_product_nve.thermo'
+PRODUCT_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_product_nvt.thermo'
 
 HEATING_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_heating.traj'
 HEATING_EQ_NVT_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_heating_eq_nvt.traj'
 QUENCHING_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_quench.traj'
 QUENCHING_EQ_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_quench_eq_nvt.traj'
 PRE_PRODUCT_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_pre_product.traj' 
-PRODUCT_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_product_nve.traj'
+#PRODUCT_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_product_nve.traj'
+PRODUCT_TRAJECTORY_FILE = f'{DUMP_PATH}/{SIMULATION_NAME}_product_nvt.traj'
 
 BENCHMARK_LOG_FILE = f'{THERMO_PATH}/{SIMULATION_NAME}_benchmark.log'
 
@@ -379,63 +386,69 @@ print(f"Successfully attached potential to device: '{device}'")
 # ==============================================================================
 # === 6. Pre-Production Run (NVT+NVE) ===
 # ==============================================================================
+#total_steps_so_far = 790000
+#
+#print(f"\n Apply Andersen thermostat for 3 times to stablized temperature.")
+#
+#traj_pre_prod = Trajectory(PRE_PRODUCT_TRAJECTORY_FILE, 'w', atoms)
+#with open(PRE_PRODUCT_LOG_FILE, 'w') as logfile:
+#    for i in range(3):
+#        print(f"\n Start {i+1}th NVE")
+#        dyn_pre_nve_prod = VelocityVerlet(
+#            atoms,
+#            timestep=TIMESTEP_FS * units.fs,
+#        )
+#
+#        thermo_pre_prod_logger = setup_thermo_logger(atoms, logfile, THERMO_FREQ, start_step=total_steps_so_far)
+#        dyn_pre_nve_prod.attach(thermo_pre_prod_logger, interval=1)
+#        dyn_pre_nve_prod.attach(traj_pre_prod.write, interval=int(DUMP_FREQ))
+#
+#        start_time_prod = time.time()
+#        dyn_pre_nve_prod.run(PRE_PROD_NVE_RUN_STEPS)
+#        end_time_prod = time.time()
+#        log_benchmark(f'6-{i+1}. NVE Pre_Production', PRE_PROD_NVE_RUN_STEPS, end_time_prod - start_time_prod)
+#
+#        total_steps_so_far += PRE_PROD_NVE_RUN_STEPS
+#
+#        # -------------------------------------------------------------------
+#        
+#        print(f"\n Start {i+1}th NVT")
+#        dyn_pre_nvt_prod = NVTBerendsen(
+#            atoms, timestep = TIMESTEP_FS * units.fs,
+#            temperature_K = QUENCHING_TARGET_TEMP,
+#            taut = 100 * TIMESTEP_FS * units.fs
+#        )
+#
+#        thermo_pre_prod_logger = setup_thermo_logger(atoms, logfile, THERMO_FREQ, start_step=total_steps_so_far)
+#        dyn_pre_nvt_prod.attach(thermo_pre_prod_logger, interval=1)
+#        dyn_pre_nvt_prod.attach(traj_pre_prod.write, interval=int(DUMP_FREQ))
+#
+#        start_time_quench_eq = time.time()
+#        dyn_pre_nvt_prod.run(PRE_PROD_NVT_RUN_STETS)
+#        end_time_quench_eq = time.time()
+#        log_benchmark(f'6-{i+1}. NVT Pre_Production', PRE_PROD_NVT_RUN_STETS, end_time_quench_eq - start_time_quench_eq)
+#
+#        total_steps_so_far += PRE_PROD_NVT_RUN_STETS
+#
+#traj_pre_prod.close()
+#write(PRE_PRODUCT_DATA_FILE, atoms, format='lammps-data')
+#
+#print("--- Pre Production Run Finished. ---")
+
+
+# =======================================
+# === 7. Production Run (NVT) ===
+# =======================================
 total_steps_so_far = 790000
 
-print(f"\n Apply Andersen thermostat for 3 times to stablized temperature.")
-
-traj_pre_prod = Trajectory(PRE_PRODUCT_TRAJECTORY_FILE, 'w', atoms)
-with open(PRE_PRODUCT_LOG_FILE, 'w') as logfile:
-    for i in range(3):
-        print(f"\n Start {i+1}th NVE")
-        dyn_pre_nve_prod = VelocityVerlet(
-            atoms,
-            timestep=TIMESTEP_FS * units.fs,
-        )
-
-        thermo_pre_prod_logger = setup_thermo_logger(atoms, logfile, THERMO_FREQ, start_step=total_steps_so_far)
-        dyn_pre_nve_prod.attach(thermo_pre_prod_logger, interval=1)
-        dyn_pre_nve_prod.attach(traj_pre_prod.write, interval=int(DUMP_FREQ))
-
-        start_time_prod = time.time()
-        dyn_pre_nve_prod.run(PRE_PROD_NVE_RUN_STEPS)
-        end_time_prod = time.time()
-        log_benchmark(f'6-{i+1}. NVE Pre_Production', PRE_PROD_NVE_RUN_STEPS, end_time_prod - start_time_prod)
-
-        total_steps_so_far += PRE_PROD_NVE_RUN_STEPS
-
-        # -------------------------------------------------------------------
-        
-        print(f"\n Start {i+1}th NVT")
-        dyn_pre_nvt_prod = NVTBerendsen(
-            atoms, timestep = TIMESTEP_FS * units.fs,
-            temperature_K = QUENCHING_TARGET_TEMP,
-            taut = 100 * TIMESTEP_FS * units.fs
-        )
-
-        thermo_pre_prod_logger = setup_thermo_logger(atoms, logfile, THERMO_FREQ, start_step=total_steps_so_far)
-        dyn_pre_nvt_prod.attach(thermo_pre_prod_logger, interval=1)
-        dyn_pre_nvt_prod.attach(traj_pre_prod.write, interval=int(DUMP_FREQ))
-
-        start_time_quench_eq = time.time()
-        dyn_pre_nvt_prod.run(PRE_PROD_NVT_RUN_STETS)
-        end_time_quench_eq = time.time()
-        log_benchmark(f'6-{i+1}. NVT Pre_Production', PRE_PROD_NVT_RUN_STETS, end_time_quench_eq - start_time_quench_eq)
-
-        total_steps_so_far += PRE_PROD_NVT_RUN_STETS
-
-traj_pre_prod.close()
-write(PRE_PRODUCT_DATA_FILE, atoms, format='lammps-data')
-
-print("--- Pre Production Run Finished. ---")
-
-
-# =======================================
-# === 7. Production Run (NVE) ===
-# =======================================
-print(f"\n--- Starting Production Run (NVE) at {QUENCHING_TARGET_TEMP} K for {PROD_NVE_RUN_STEPS * TIMESTEP_FS / 1000:.1f} ps ---")
-dyn_prod = VelocityVerlet(
+print(f"\n--- Starting Production Run (NVT) at {QUENCHING_TARGET_TEMP} K for {PROD_NVT_RUN_STEPS * TIMESTEP_FS / 1000:.1f} ps ---")
+dyn_prod = NoseHooverChainNVT(
     atoms,
     timestep=TIMESTEP_FS * units.fs,
+    temperature_K = QUENCHING_TARGET_TEMP,
+    tdamp = 200 * units.fs,
+    tchain = 3,
+    tloop = 2
 )
 
 traj_prod = Trajectory(PRODUCT_TRAJECTORY_FILE, 'w', atoms)
@@ -445,11 +458,11 @@ with open(PRODUCT_LOG_FILE, 'w') as logfile:
     dyn_prod.attach(traj_prod.write, interval=int(DUMP_FREQ))
 
     start_time_prod = time.time()
-    dyn_prod.run(PROD_NVE_RUN_STEPS)
+    dyn_prod.run(PROD_NVT_RUN_STEPS)
     end_time_prod = time.time()
-    log_benchmark('7. Production (NVE)', PROD_NVE_RUN_STEPS, end_time_prod - start_time_prod)
+    log_benchmark('7. Production (NVT)', PROD_NVT_RUN_STEPS, end_time_prod - start_time_prod)
 
-total_steps_so_far += PROD_NVE_RUN_STEPS
+total_steps_so_far += PROD_NVT_RUN_STEPS
 traj_prod.close()
 write(PRODUCT_DATA_FILE, atoms, format='lammps-data')
 
