@@ -6,10 +6,10 @@ import os
 #target_species = 'Cl'
 target_species = 'Na'
 
-#file_path = f"../result/{target_species}_MSD_ensemble_average.dat"
-#file_path = f"../result/{target_species}_MSD_ensemble_average.dat"
+#file_path = f"../result/{target_species}_MSD_ensemble_average_heating_eq.dat"
+file_path = f"../result/{target_species}_MSD_ensemble_average.dat"
 #file_path = f"../result/{target_species}_MSD_ensemble_average_pre_product.dat"
-file_path = f"../result/{target_species}_MSD_ensemble_average_product.dat"
+#file_path = f"../result/{target_species}_MSD_ensemble_average_product.dat"
 column_names = [
     'Time(ps)', 'MSD_mean', 'MSD_std'
 ]
@@ -52,9 +52,10 @@ plt.yscale('log')
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-#plt.savefig(os.path.join(output_path, f'{target_species}_MSD_avg.png'), dpi=300)
+plt.savefig(os.path.join(output_path, f'{target_species}_MSD_avg.png'), dpi=300)
 #plt.savefig(os.path.join(output_path, f'{target_species}_MSD_quench_avg.png'), dpi=300)
 #plt.savefig(os.path.join(output_path, f'{target_species}_MSD_pre_prod_avg.png'), dpi=300)
-plt.savefig(os.path.join(output_path, f'{target_species}_MSD_prod_avg.png'), dpi=300)
+#plt.savefig(os.path.join(output_path, f'{target_species}_MSD_prod_avg.png'), dpi=300)
+#plt.savefig(os.path.join(output_path, f'{target_species}_MSD_heat_eq_avg.png'), dpi=300)
 #plt.show()
 plt.close()

@@ -65,7 +65,7 @@ QUENCHING_EQ_NVT_STEPS = 250000 # Production for 0.5 ns
 
 
 # Production(NVT)
-PROD_NVT_RUN_STEPS = 10000000 # Production for 20 ns 
+PROD_NVT_RUN_STEPS = 5000000 # Production for 10 ns 
 
 # I/O Parameters
 THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
@@ -179,6 +179,30 @@ def log_benchmark(stage_name, steps, elapsed_seconds):
         f.write(f"{stage_name:<35s} {elapsed_seconds:>18.2f} {ps_per_day:>25.2f}\n")
 
     print(f"--- Benchmark for {stage_name}: {ps_per_day:.2f} ps/day ---")
+
+
+def get_last_step_from_log(logfile_path):
+    if not os.path.exists(logfile_path) or os.path.getsize(logfile_path) == 0:
+        return None
+
+    try:
+        with open(logfile_path, 'r') as f:
+            lines = f.readlines()
+    except IOError:
+        return None 
+
+    for line in reversed(lines):
+        line = line.strip()
+        if not line:  
+            continue
+        
+        try:
+            last_step = int(line.split()[0])
+            return last_step 
+        except (ValueError, IndexError):
+            continue
+            
+    return None 
 
 
 # ==============================================================================
@@ -442,6 +466,19 @@ print(f"Successfully attached potential to device: '{device}'")
 # =======================================
 total_steps_so_far = 790000
 
+last_step_found = get_last_step_from_log(PRODUCT_LOG_FILE)
+
+if last_step_found is not None:
+    total_steps_so_far = last_step_found
+    print(f"Log file found. Restarting simulation from step {total_steps_so_far}.")
+    atoms = read(PRODUCT_TRAJECTORY_FILE, index=-1)
+    atoms.calc = MatterSimCalculator(potential=potential) 
+else:
+    #total_steps_so_far = PRE_PROD_NVT_RUN_STEPS
+    total_steps_so_far = 790000
+    print(f"No valid log found. Starting new production run from step {total_steps_so_far}.")
+
+
 print(f"\n--- Starting Production Run (NVT) at {QUENCHING_TARGET_TEMP} K for {PROD_NVT_RUN_STEPS * TIMESTEP_FS / 1000:.1f} ps ---")
 dyn_prod = NoseHooverChainNVT(
     atoms,
@@ -452,8 +489,9 @@ dyn_prod = NoseHooverChainNVT(
     tloop = 2
 )
 
-traj_prod = Trajectory(PRODUCT_TRAJECTORY_FILE, 'w', atoms)
-with open(PRODUCT_LOG_FILE, 'w') as logfile:
+
+traj_prod = Trajectory(PRODUCT_TRAJECTORY_FILE, 'a', atoms)
+with open(PRODUCT_LOG_FILE, 'a') as logfile:
     thermo_prod_logger = setup_thermo_logger(atoms, logfile, THERMO_FREQ, start_step=total_steps_so_far)
     dyn_prod.attach(thermo_prod_logger, interval=1)
     dyn_prod.attach(traj_prod.write, interval=int(DUMP_FREQ))
@@ -468,3 +506,4 @@ traj_prod.close()
 write(PRODUCT_DATA_FILE, atoms, format='lammps-data')
 
 print("--- Production Run Finished. Simulation Complete. ---")
+

@@ -5,8 +5,8 @@ import os
 
 ATOM_NAME = 'Na'
 INPUT_FILE_PATH = "../result"
-#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_heating_eq.dat'
-INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average.dat'
+INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_heating_eq.dat'
+#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average.dat'
 #INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_product.dat'
 #INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_quench.dat'
 #INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_pre_product.dat'
@@ -65,6 +65,7 @@ fig.tight_layout()
 output_fig_filename = f'{ATOM_NAME}_MSD_alpha.png'
 #output_fig_filename = f'{ATOM_NAME}_MSD_alpha_quench.png'
 #output_fig_filename = f'{ATOM_NAME}_MSD_alpha_pre_prod.png'
+
 output_fig_path = "../result"
 output_fig_file = os.path.join(output_fig_path, output_fig_filename)
 plt.savefig(output_fig_file, dpi=300)

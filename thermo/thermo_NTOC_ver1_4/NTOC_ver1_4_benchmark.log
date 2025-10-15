@@ -1,0 +1,7 @@
+Simulation Stage                          Wall Time[s]       Performance[ps/day]
+----------------------------------- ------------------ -------------------------
+4.1 Gradual Heating (NVT)                     65700.11                    526.03
+4.2 Heating Equilibration (NVT)               81108.40                    532.62
+5.1 Quenching (NVT)                           29246.33                    531.76
+5.2 Quenching Equilibration (NVT)             81797.13                    528.14
+6. Production (NVE)                          160262.83                    539.11

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-GPU_LIST=(2 3 4 5 6)
+GPU_LIST=(0 1 7)
 
-ENSEMBLE_LIST=(1 2 3 4 5)
+ENSEMBLE_LIST=(1 2 3)
 
 CORES_PER_JOB=1
 
@@ -20,6 +20,6 @@ do
     CUDA_VISIBLE_DEVICES=${GPU_ID} \
     OMP_NUM_THREADS=${CORES_PER_JOB} \
     taskset -c ${CPU_LIST} \
-    nohup python3 NTOC_Ver4.py ${ENSEMBLE_ID} > NTOC_ver4_${ENSEMBLE_ID}.log 2>&1 &
+    nohup python3 NTOC_Ver4_restart.py ${ENSEMBLE_ID} > NTOC_ver4_${ENSEMBLE_ID}_restart.log 2>&1 &
 
 done

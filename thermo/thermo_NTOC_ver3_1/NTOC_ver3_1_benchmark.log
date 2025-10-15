@@ -1,0 +1,9 @@
+Simulation Stage                          Wall Time[s]       Performance[ps/day]
+----------------------------------- ------------------ -------------------------
+6-1. NVE Pre_Production                       32888.88                    525.41
+6-1. NVT Pre_Production                       16480.36                    524.26
+6-2. NVE Pre_Production                       32897.50                    525.27
+6-2. NVT Pre_Production                       16488.46                    524.00
+6-3. NVE Pre_Production                       35675.12                    484.37
+6-3. NVT Pre_Production                       19207.07                    449.83
+7. Production (NVE)                          252100.47                    514.08
