@@ -1,16 +1,16 @@
 import MDAnalysis as mda
 import MDAnalysis.analysis.msd as msd
-from MDAnalysis.transformations import unwrap, nojump
+from MDAnalysis.transformations import unwrap
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 
 
-BASE_DIR_NAME = "../dump/dump_NTOC_ver3_{}"
+BASE_DIR_NAME = "../../dump/dump_NTOC_ver4_{}"
 NUM_ENSEMBLES = 5
 ATOM_GROUP_TO_ANALYZE = "name Na"
-SIMULATION_DT = 2.0
+SIMULATION_DT = 2000 #fs
 
 all_msd = []
 print("Starting MSD analysis...")
@@ -18,9 +18,7 @@ print("Starting MSD analysis...")
 for i in range(1, NUM_ENSEMBLES + 1):
     directory = BASE_DIR_NAME.format(i)
 
-    xyz_filename = f"{i}_product.xyz"
-    #xyz_filename = f"{i}_quench_eq.xyz"
-    #xyz_filename = f"{i}_pre_prod.xyz"
+    xyz_filename = f"{i}_product_unwrapped.xyz"
     xyz_path = os.path.join(directory, xyz_filename)
 
     if not os.path.exists(xyz_path):
@@ -38,10 +36,6 @@ for i in range(1, NUM_ENSEMBLES + 1):
             print(f"WARNING: No atoms matched in {xyz_path}. Skipping.")
             continue
 
-
-        transform = mda.transformations.nojump.Nojump(u.atoms) 
-        u.trajectory.add_transformations(transform)
-
         msd_analysis = msd.EinsteinMSD(ag, msd_type='xyz', fft=True)
         msd_analysis.run()
 
@@ -52,12 +46,11 @@ for i in range(1, NUM_ENSEMBLES + 1):
 
 if all_msd:
     print(f"\nMSD analysis completed for {len(all_msd)} ensembles.")
-   
+    
     max_len = max(len(m) for m in all_msd)
     msd_padded = [np.pad(m, (0, max_len - len(m)), 'constant', constant_values=np.nan) for m in all_msd]
     msd_array = np.array(msd_padded)
     
-
     msd_mean = np.nanmean(msd_array, axis=0)
     msd_std = np.nanstd(msd_array, axis=0)
     
@@ -65,17 +58,17 @@ if all_msd:
     time_lags_fs = np.arange(num_lags) * SIMULATION_DT
     time_lags_ps = time_lags_fs / 1000.0
 
-    output_path = "../result"
+    output_path = "../../result"
     os.makedirs(output_path, exist_ok=True) 
 
     atom_name = ATOM_GROUP_TO_ANALYZE.split()[-1]
-    output_data_filename = f'{atom_name}_MSD_product_ensemble_average.dat'
+    output_data_filename = f'{atom_name}_MSD_product_ensemble_average_mda.dat'
     #output_data_filename = f'{atom_name}_MSD_quench_ensemble_average.dat'
     output_data_file = os.path.join(output_path, output_data_filename)
 
     data_to_save = {
         'Time(ps)': time_lags_ps,
-        'MSD_avg(A^2)': msd_mean,
+        'MSD_mean(A^2)': msd_mean,
         'MSD_std(A^2)': msd_std
     }
     df_to_save = pd.DataFrame(data_to_save)
@@ -96,7 +89,6 @@ if all_msd:
     plt.legend(fontsize=12)
     plt.tick_params(axis='both', which='major', labelsize=12)
     
-
     output_fig_filename = f'MSD_{atom_name}_final.png'
     output_fig_file = os.path.join(output_path, output_fig_filename)
     plt.savefig(output_fig_file, dpi=300, bbox_inches='tight')

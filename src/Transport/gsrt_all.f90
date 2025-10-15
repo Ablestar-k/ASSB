@@ -3,7 +3,7 @@ program ensemble_vanhove_analyzer
     implicit none
 
     ! Input parameters
-    character(len=256) :: SIMULATION_NAME
+    character(len=256) :: SIMULATION_NAME, BASE_FILE_NAME
     integer :: NUM_ENSEMBLES
     character(len=8) :: SPECIES
     double precision :: BINSIZE, MAX_R
@@ -19,8 +19,8 @@ program ensemble_vanhove_analyzer
     double precision, allocatable :: mean_gs_arr(:,:), std_gs_arr(:,:) 
 
     open(unit=99, file='vanhove_all.inp', status='old', action='read')
-    read(99, *) SIMULATION_NAME, NUM_ENSEMBLES
-    read(99, *) SPECIES
+    read(99, *) SIMULATION_NAME, BASE_FILE_NAME, SPECIES
+    read(99, *) NUM_ENSEMBLES
     read(99, *) BINSIZE, MAX_R
     read(99, *) T_DELTA, MAX_T_DELTA
     close(99)
@@ -43,8 +43,8 @@ program ensemble_vanhove_analyzer
     !  Main loop over each ensemble member
     ! =====================================
     do i = 1, NUM_ENSEMBLES
-        write(dir_part, '(A,A,A,I0)') '../dump/dump_', trim(SIMULATION_NAME), '_', i
-        write(file_part, '(I0,A,A)') i, '_product', '.xyz'
+        write(dir_part, '(A,A,A,I0)') '../../dump/dump_', trim(SIMULATION_NAME), '_', i
+        write(file_part, '(I0,A)') i, trim(BASE_FILE_NAME)
         xyz_fname = trim(dir_part) // '/' // trim(file_part)
         print *, 'Processing: ', trim(xyz_fname)
 
@@ -76,7 +76,7 @@ program ensemble_vanhove_analyzer
         end do
     end do
 
-    write(out_fname, '(A,A,A)') '../result/gsrt_all_', trim(SPECIES), '.dat'
+    write(out_fname, '(A,A,A)') '../../result/gsrt_all_', trim(SPECIES), '.dat'
     open(unit=50, file=trim(out_fname), status='replace')
     
     ! === Write Output File ===

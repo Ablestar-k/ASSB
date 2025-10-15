@@ -4,12 +4,8 @@ import matplotlib.pyplot as plt
 import os
 
 ATOM_NAME = 'Na'
-INPUT_FILE_PATH = "../result"
-INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_heating_eq.dat'
-#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average.dat'
-#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_product.dat'
-#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_quench.dat'
-#INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_pre_product.dat'
+INPUT_FILE_PATH = "../../result"
+INPUT_FILENAME = f'{ATOM_NAME}_MSD_product_ensemble_average_mda.dat'
 
 INPUT_FILE = os.path.join(INPUT_FILE_PATH, INPUT_FILENAME)
 
@@ -54,7 +50,8 @@ ax.set_xlabel('Time (ps)', fontsize=14)
 ax.set_ylabel(r'$\alpha$', fontsize=14)
 #ax.set_title(rf'"{ATOM_NAME}" Time vs $\alpha$', fontsize=16, fontweight='bold')
 ax.set_title(rf'"{ATOM_NAME}" Time vs $\alpha$', fontsize=16, fontweight='bold')
-ax.set_ylim(0, 2) 
+ax.set_ylim(0, 0.5) 
+ax.set_xlim(2,100)
 ax.set_xscale('log')
 ax.legend(fontsize=12)
 ax.tick_params(axis='both', which='major', labelsize=12)
@@ -66,7 +63,7 @@ output_fig_filename = f'{ATOM_NAME}_MSD_alpha.png'
 #output_fig_filename = f'{ATOM_NAME}_MSD_alpha_quench.png'
 #output_fig_filename = f'{ATOM_NAME}_MSD_alpha_pre_prod.png'
 
-output_fig_path = "../result"
+output_fig_path = "../../result"
 output_fig_file = os.path.join(output_fig_path, output_fig_filename)
 plt.savefig(output_fig_file, dpi=300)
 

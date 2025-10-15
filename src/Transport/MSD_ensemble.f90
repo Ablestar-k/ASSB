@@ -7,6 +7,8 @@ program ensemble_msd_analyzer
     integer :: NUM_TOTAL_PARTICLES
     double precision :: TIME_STEP_FS
     character(len=100) :: SIMULATION_NAME
+    character(len=100) :: BASE_FILE_NAME
+    character(len=100) :: OUT_FILE_NAME
     character(len=5) :: TARGET_SPECIES_NAME
 
     integer :: e, dt, stat, uout, ios, num_target_particles
@@ -24,13 +26,13 @@ program ensemble_msd_analyzer
     print *, "--- Starting Ensemble MSD Analysis ---"
 
     open(unit=10, file='MSD.inp', status='old', action='read', iostat=ios)
-    read(10,*) SIMULATION_NAME, TARGET_SPECIES_NAME, TIME_STEP_FS, TOTAL_TIME_MAX, NUM_ENSEMBLES, NUM_TOTAL_PARTICLES
+    read(10,*) SIMULATION_NAME, BASE_FILE_NAME, OUT_FILE_NAME, TARGET_SPECIES_NAME 
+    read(10,*) TIME_STEP_FS, TOTAL_TIME_MAX, NUM_ENSEMBLES, NUM_TOTAL_PARTICLES
     close(10)
 
     write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1
-    write(file_part, '(I1,A)') 1, '_heating_eq.xyz'
-    !write(file_part, '(I1,A)') 1, '_product.xyz'
-    xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
+    write(file_part, '(I1,A)') 1, trim(BASE_FILE_NAME)
+    xyz_fname = '../../dump/' // trim(dir_part) // '/' // trim(file_part)
     call prescan_trajectory(xyz_fname, NUM_TOTAL_PARTICLES, TARGET_SPECIES_NAME, &
                               num_target_particles, target_indices)
     print *, "Found", num_target_particles, " target particles ('"//trim(TARGET_SPECIES_NAME)//"') from pre-scan."
@@ -48,9 +50,8 @@ program ensemble_msd_analyzer
         allocate(current_disp_sum(TOTAL_TIME_MAX), stat=stat)
         
         write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', e
-        write(file_part, '(I1,A)') e, '_heating_eq.xyz'
-        !write(file_part, '(I1,A)') e, '_product.xyz'
-        xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
+        write(file_part, '(I1,A)') e, trim(BASE_FILE_NAME)
+        xyz_fname = '../../dump/' // trim(dir_part) // '/' // trim(file_part)
         
         print *, "Processing Ensemble #", e, ": ", trim(xyz_fname)
 
@@ -102,9 +103,7 @@ program ensemble_msd_analyzer
     end do
 
     ! Write final output file
-    !open(newunit=uout, file='../result/' // trim(TARGET_SPECIES_NAME)//'_MSD_ensemble_average.dat', &
-    !    status='replace', action='write', iostat=ios)
-    open(newunit=uout, file='../result/' // trim(TARGET_SPECIES_NAME)//'_MSD_ensemble_average_heating_eq.dat', &
+    open(newunit=uout, file='../../result/' // trim(TARGET_SPECIES_NAME)// trim(OUT_FILE_NAME) , &
         status='replace', action='write', iostat=ios)    
     if (ios /= 0) stop 'Error creating output file.'
 
@@ -115,8 +114,7 @@ program ensemble_msd_analyzer
     end do
     close(uout)
 
-    !print *, "--- Analysis complete. Output saved to: MSD_ensemble_average.dat ---"
-    print *, "--- Analysis complete. Output saved to: MSD_ensemble_average_pre_product.dat ---"
+    print *, "--- Analysis complete. Results written to ../result/"// trim(TARGET_SPECIES_NAME)// trim(OUT_FILE_NAME) // " ---"
     deallocate(disp_sum_total, msd_per_ensemble, actual_times, mean_msd, std_msd, total_origins, target_indices)
 
 contains
