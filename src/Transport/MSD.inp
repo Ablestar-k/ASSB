@@ -1,2 +1,2 @@
-NTOC_ver4 _product_unwrapped.xyz _MSD_ensemble_average_product.dat Na
-2000 5000 5 4004
+NTOC_ver4_MSD _product.xyz _MSD_short_product.dat Na
+50 4000 5 4004

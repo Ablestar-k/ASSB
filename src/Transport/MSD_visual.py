@@ -5,7 +5,7 @@ import os
 
 target_species = 'Na'
 
-file_path = f"../../result/{target_species}_MSD_product_ensemble_average_mda.dat"
+file_path = f"../../result/{target_species}_MSD_ensemble_average_product.dat"
 
 column_names = [
     'Time(ps)', 'MSD_mean', 'MSD_std'

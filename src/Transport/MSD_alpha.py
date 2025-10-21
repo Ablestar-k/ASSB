@@ -5,7 +5,7 @@ import os
 
 ATOM_NAME = 'Na'
 INPUT_FILE_PATH = "../../result"
-INPUT_FILENAME = f'{ATOM_NAME}_MSD_product_ensemble_average_mda.dat'
+INPUT_FILENAME = f'{ATOM_NAME}_MSD_ensemble_average_product.dat'
 
 INPUT_FILE = os.path.join(INPUT_FILE_PATH, INPUT_FILENAME)
 
@@ -50,8 +50,7 @@ ax.set_xlabel('Time (ps)', fontsize=14)
 ax.set_ylabel(r'$\alpha$', fontsize=14)
 #ax.set_title(rf'"{ATOM_NAME}" Time vs $\alpha$', fontsize=16, fontweight='bold')
 ax.set_title(rf'"{ATOM_NAME}" Time vs $\alpha$', fontsize=16, fontweight='bold')
-ax.set_ylim(0, 0.5) 
-ax.set_xlim(2,100)
+ax.set_xlim(0.05, 1000) 
 ax.set_xscale('log')
 ax.legend(fontsize=12)
 ax.tick_params(axis='both', which='major', labelsize=12)
