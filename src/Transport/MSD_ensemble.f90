@@ -28,6 +28,7 @@ program ensemble_msd_analyzer
     open(unit=10, file='MSD.inp', status='old', action='read', iostat=ios)
     read(10,*) SIMULATION_NAME, BASE_FILE_NAME, OUT_FILE_NAME, TARGET_SPECIES_NAME 
     read(10,*) TIME_STEP_FS, TOTAL_TIME_MAX, NUM_ENSEMBLES, NUM_TOTAL_PARTICLES
+    ! TOTAL_TIME_MAX is in number of frames
     close(10)
 
     write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1

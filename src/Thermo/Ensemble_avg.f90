@@ -145,14 +145,25 @@ PROGRAM ensemble_avg
         vol_avg = vol_sum / NUM_ENSEMBLES
         density_avg = density_sum / NUM_ENSEMBLES
 
-        ! Calculate standard deviation: sqrt(<x^2> - <x>^2)
-        temp_std = SQRT(MAX(0.d0, temp_sq_sum / NUM_ENSEMBLES - temp_avg**2))
-        pressure_atm_std = SQRT(MAX(0.d0, pressure_atm_sq_sum / NUM_ENSEMBLES - pressure_atm_avg**2))
-        pe_std = SQRT(MAX(0.d0, pe_sq_sum / NUM_ENSEMBLES - pe_avg**2))
-        ke_std = SQRT(MAX(0.d0, ke_sq_sum / NUM_ENSEMBLES - ke_avg**2))
-        Etot_std = SQRT(MAX(0.d0, Etot_sq_sum / NUM_ENSEMBLES - Etot_avg**2))
-        vol_std = SQRT(MAX(0.d0, vol_sq_sum / NUM_ENSEMBLES - vol_avg**2))
-        density_std = SQRT(MAX(0.d0, density_sq_sum / NUM_ENSEMBLES - density_avg**2))
+        ! Calculate Sample standard deviation: sqrt( (sum(x^2) - N*<x>^2) / (N-1) )
+        IF (NUM_ENSEMBLES > 1) THEN
+            temp_std = SQRT(MAX(0.d0, (temp_sq_sum - dble(NUM_ENSEMBLES)*temp_avg**2) / dble(NUM_ENSEMBLES - 1)))
+            pressure_atm_std = SQRT(MAX(0.d0, (pressure_atm_sq_sum - dble(NUM_ENSEMBLES)*pressure_atm_avg**2) / dble(NUM_ENSEMBLES - 1)))
+            pe_std = SQRT(MAX(0.d0, (pe_sq_sum - dble(NUM_ENSEMBLES)*pe_avg**2) / dble(NUM_ENSEMBLES - 1)))
+            ke_std = SQRT(MAX(0.d0, (ke_sq_sum - dble(NUM_ENSEMBLES)*ke_avg**2) / dble(NUM_ENSEMBLES - 1)))
+            Etot_std = SQRT(MAX(0.d0, (Etot_sq_sum - dble(NUM_ENSEMBLES)*Etot_avg**2) / dble(NUM_ENSEMBLES - 1)))
+            vol_std = SQRT(MAX(0.d0, (vol_sq_sum - dble(NUM_ENSEMBLES)*vol_avg**2) / dble(NUM_ENSEMBLES - 1)))
+            density_std = SQRT(MAX(0.d0, (density_sq_sum - dble(NUM_ENSEMBLES)*density_avg**2) / dble(NUM_ENSEMBLES - 1)))
+        
+        ELSE
+            temp_std = 0.d0
+            pressure_atm_std = 0.d0
+            pe_std = 0.d0
+            ke_std = 0.d0
+            Etot_std = 0.d0
+            vol_std = 0.d0
+            density_std = 0.d0
+        END IF
 
         ! Write results for the current frame
         WRITE(unit_out, '(F12.1, F13.1, 14(1X, F14.6))') &

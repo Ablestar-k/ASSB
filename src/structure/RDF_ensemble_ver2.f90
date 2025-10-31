@@ -12,8 +12,8 @@ program ensemble_rdf_analyzer
     double precision :: r_center, mean_gr, std_gr, sum_sq
     character(len=512) :: SIMULATION_NAME, xyz_fname, dir_part, file_part, out_fname
 
-    double precision, allocatable :: gr_values(:,:)     
-    double precision, allocatable :: current_gr(:)       
+    double precision, allocatable :: gr_values(:,:)      
+    double precision, allocatable :: current_gr(:)        
     double precision, allocatable :: mean_gr_arr(:), std_gr_arr(:)
 
     open(unit=99, file='g_r.inp', status='old', action='read')
@@ -316,17 +316,25 @@ pure subroutine invert3x3(A, Ainv, detA)
     Ainv = transpose(reshape([c11,c21,c31, c12,c22,c32, c13,c23,c33], [3,3])) / detA
 end subroutine invert3x3
 
+! **************************************************
+! *** PBC FIX APPLIED HERE (transposed matrices) ***
+! **************************************************
 pure subroutine min_image_dr(H, Hinv, dx, dy, dz)
-    double precision, intent(in)    :: H(3,3), Hinv(3,3)
-    double precision, intent(inout) :: dx, dy, dz
+    double precision, intent(in)     :: H(3,3), Hinv(3,3)
+    double precision, intent(inout)  :: dx, dy, dz
     double precision :: sx, sy, sz
-    sx = Hinv(1,1)*dx + Hinv(1,2)*dy + Hinv(1,3)*dz
-    sy = Hinv(2,1)*dx + Hinv(2,2)*dy + Hinv(2,3)*dz
-    sz = Hinv(3,1)*dx + Hinv(3,2)*dy + Hinv(3,3)*dz
+
+    ! s = (Hinv)^T * dr (Corrected: Hinv(j,i))
+    sx = Hinv(1,1)*dx + Hinv(2,1)*dy + Hinv(3,1)*dz
+    sy = Hinv(1,2)*dx + Hinv(2,2)*dy + Hinv(3,2)*dz
+    sz = Hinv(1,3)*dx + Hinv(2,3)*dy + Hinv(3,3)*dz
+
     sx = sx - dnint(sx);  sy = sy - dnint(sy);  sz = sz - dnint(sz)
-    dx = H(1,1)*sx + H(1,2)*sy + H(1,3)*sz
-    dy = H(2,1)*sx + H(2,2)*sy + H(2,3)*sz
-    dz = H(3,1)*sx + H(3,2)*sy + H(3,3)*sz
+
+    ! dr = H^T * s_mic (Corrected: H(j,i))
+    dx = H(1,1)*sx + H(2,1)*sy + H(3,1)*sz
+    dy = H(1,2)*sx + H(2,2)*sy + H(3,2)*sz
+    dz = H(1,3)*sx + H(2,3)*sy + H(3,3)*sz
 end subroutine min_image_dr
 
 logical function safe_parse_atom_line(aline, sym, x, y, z)

@@ -5,41 +5,29 @@
 
 #define LINESIZE 1024
 #define MAXTIMESTEP 100000
-
-// --- Pair cutoff distances in Angstroms ---
-#define TA_TA_CUTOFF 4.3
 #define TA_O_CUTOFF  2.9
 #define TA_CL_CUTOFF 3.5
-#define O_O_CUTOFF   3.5
-#define O_CL_CUTOFF  3.2
-#define CL_CL_CUTOFF 3.8
 
-
-// --- Global Variables ---
 int numTraj = 0;
 int numAtoms[MAXTIMESTEP];
 int ***atom;
 double ***coord;
 double ***lattice_vectors;
 int numNa, numTa, numO, numCl;
-int **cluster;
+int **cluster; // [t][atom_idx] -> cluster_id
 
+int **Ta_Ta_TCF_dat; // [t][data]
 
 int read_xyz_traj(const char *filename);
 void perform_clustering();
-void analyze_and_write_clusters(const char *cluster_size_filename, const char *na_coord_filename);
-int check_for_updates(int n, const int *arr1, const int *arr2);
-void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]);
-
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
-        printf("USAGE: %s <input.xyz> <cluster_size.dat> <na_coord.dat>\n", argv[0]);
+    if (argc != 3) {
+        printf("USAGE: %s <input.xyz> <Ta-Ta_TCF.dat>\n", argv[0]);
         exit(1);
     }
     const char *input_file = argv[1];
-    const char *cluster_size_output_file = argv[2];
-    const char *na_coord_output_file = argv[3]; 
+    const char *tata_tcf_output_file = argv[2];
 
     atom = (int***)malloc(sizeof(int**) * MAXTIMESTEP);
     coord = (double***)malloc(sizeof(double**) * MAXTIMESTEP);
@@ -51,14 +39,14 @@ int main(int argc, char *argv[]) {
     }
 
     if (read_xyz_traj(input_file) != 0) {
-        fprintf(stderr, "Error: Failed to read the trajectory file.\n");
+        fprintf(stderr, "Error reading trajectory file.\n");
         exit(1);
     }
 
     printf("\n\t\t< FILE SUMMARY >\n\n");
     printf("\tNumber of Timesteps Read : %d\n", numTraj);
     printf("\tNumber of Atoms per Frame: %d\n\n", numAtoms[0]);
-
+    
     numNa = 0; numTa = 0; numO = 0; numCl = 0;
     for (int i = 0; i < numAtoms[0]; i++) {
         switch (atom[0][i][1]) {
@@ -77,9 +65,7 @@ int main(int argc, char *argv[]) {
 
     perform_clustering();
 
-    analyze_and_write_clusters(cluster_size_output_file, na_coord_output_file);
-
-    printf("\tFreeing memory...\n");
+    // Free allocated memory
     for (int t = 0; t < numTraj; t++) {
         for (int i = 0; i < numAtoms[t]; i++) {
             free(atom[t][i]);
@@ -87,16 +73,16 @@ int main(int argc, char *argv[]) {
         }
         free(atom[t]);
         free(coord[t]);
+        for (int i = 0; i < 3; i++) {
+            free(lattice_vectors[t][i]);
+        }
         free(lattice_vectors[t]);
-        free(cluster[t]);
     }
     free(atom);
     free(coord);
     free(lattice_vectors);
-    free(cluster);
 
     printf("\tAll Tasks are Done! >:D\n");
-
     return 0;
 }
 
@@ -167,12 +153,8 @@ int read_xyz_traj(const char *filename) {
 void perform_clustering() {
     printf("\tNow Performing Clustering Analysis...\n");
 
-    const double ta_ta_cutoff_sq = TA_TA_CUTOFF * TA_TA_CUTOFF;
     const double ta_o_cutoff_sq  = TA_O_CUTOFF * TA_O_CUTOFF;
     const double ta_cl_cutoff_sq = TA_CL_CUTOFF * TA_CL_CUTOFF;
-    const double o_o_cutoff_sq   = O_O_CUTOFF * O_O_CUTOFF;
-    const double o_cl_cutoff_sq  = O_CL_CUTOFF * O_CL_CUTOFF;
-    const double cl_cl_cutoff_sq = CL_CL_CUTOFF * CL_CL_CUTOFF;
 
     cluster = (int **)malloc(sizeof(int *) * numTraj);
 
@@ -217,20 +199,12 @@ void perform_clustering() {
                         type_j = temp;
                     }
 
-                    if (type_i == 2 && type_j == 2) { // Ta-Ta
-                        current_cutoff_sq = ta_ta_cutoff_sq;
-                    } else if (type_i == 2 && type_j == 3) { // Ta-O
+                    if (type_i == 2 && type_j == 3) { // Ta-O
                         current_cutoff_sq = ta_o_cutoff_sq;
                     } else if (type_i == 2 && type_j == 4) { // Ta-Cl
                         current_cutoff_sq = ta_cl_cutoff_sq;
-                    } else if (type_i == 3 && type_j == 3) { // O-O
-                        current_cutoff_sq = o_o_cutoff_sq;
-                    } else if (type_i == 3 && type_j == 4) { // O-Cl
-                        current_cutoff_sq = o_cl_cutoff_sq;
-                    } else if (type_i == 4 && type_j == 4) { // Cl-Cl
-                        current_cutoff_sq = cl_cl_cutoff_sq;
                     } else {
-                        current_cutoff_sq = 1.0e9; 
+                        continue;
                     }
 
                     double dr[3], df[3], dr_pbc[3];
@@ -251,7 +225,7 @@ void perform_clustering() {
                     dr_pbc[2] = current_lattice[0][2]*df[0] + current_lattice[1][2]*df[1] + current_lattice[2][2]*df[2];
 
                     double distSq = dr_pbc[0]*dr_pbc[0] + dr_pbc[1]*dr_pbc[1] + dr_pbc[2]*dr_pbc[2];
-              
+                
                     if (distSq < current_cutoff_sq) { 
                         int id1 = newCluster[i];
                         int id2 = newCluster[j];
@@ -272,140 +246,37 @@ void perform_clustering() {
         }
         
         cluster[t] = newCluster; 
-        free(oldCluster);      
+        free(oldCluster);       
     }
 }
 
+void Ta_Ta_TCF(){
 
-void analyze_and_write_clusters(const char *cluster_size_filename, const char *na_coord_filename) {
-    printf("\tAnalyzing cluster lists and writing to %s...\n", cluster_size_filename);
-    FILE *fp_size = fopen(cluster_size_filename, "w");
-    if (!fp_size) {
-        perror("Error opening cluster size output file");
-        return;
-    }
-
-    FILE *fp_na = fopen(na_coord_filename, "w");
-    if (!fp_na) {
-        perror("Error opening Na+ coordination output file");
-        fclose(fp_size);
-        return;
-    }
-    printf("\tNa+ coordination analysis will be written to %s...\n", na_coord_filename);
-
-    fprintf(fp_size, "# Timestep\tNum_Clusters\tMax_Cluster_Size\n");
-    fprintf(fp_na, "# Timestep\tNa_Index\tClosest_Atom_Index\tClosest_Atom_Type\tCoordinated_Cluster_ID\tMin_Distance(A)\n");
+    Ta_Ta_TCF_dat = (int **) malloc(sizeof(int *) * numTraj);
 
     for (int t = 0; t < numTraj; t++) {
-        int nAtom = numAtoms[t];
+        Ta_Ta_TCF_dat[t] = (int *) malloc(sizeof(int) * numTa * (numTa-1) / 2);
 
-        int max_id = 0;
-        for(int i=0; i<nAtom; ++i) if(cluster[t][i] > max_id) max_id = cluster[t][i];
+        for (int i = 0; i < numAtoms[t]; i++) {
+            for (int j = i + 1; j < numAtoms[t]; j++) {
+                if (atom[t][i][1] != 2) continue; // Skip non-Ta
+                if (atom[t][j][1] != 2) continue; // Skip non-Ta
+
+                int ta_1 = atom[t][i][1];
+                int ta_2 = atom[t][j][1];
+
+                int num_Ta_pairs = 0;
+
+                if(cluster[t][i] == cluster[t][j]){
+                    Ta_Ta_TCF_dat[t][num_Ta_pairs ] = 1; // In same cluster
+                } else {
+                    Ta_Ta_TCF_dat[t][num_Ta_pairs] = 0; // Not in same cluster
+                }
+            }
+
+        }
         
-        int* counter = (int*)calloc(max_id + 1, sizeof(int));
-        if(!counter) {
-            fprintf(stderr, "Error: Failed to allocate counter in analyze step.\n");
-            continue;
-        }
-
-        for (int i = 0; i < nAtom; i++) {
-            if (cluster[t][i] != -1) {
-                counter[cluster[t][i]]++;
-            }
-        }
-
-        int numCluster = 0, maxClusterSize = 0;
-        for (int i = 0; i <= max_id; i++) {
-            if (counter[i] > 0) {
-                numCluster++;
-                if (counter[i] > maxClusterSize) {
-                    maxClusterSize = counter[i];
-                }
-            }
-        }
-        fprintf(fp_size, "%d\t%d\t%d\n", t, numCluster, maxClusterSize);
-        free(counter);
-
-        double inv_lattice[3][3];
-        double current_lattice[3][3];
-        for(int i=0; i<3; ++i) for(int j=0; j<3; ++j) current_lattice[i][j] = lattice_vectors[t][i][j];
-        invert_matrix_3x3(current_lattice, inv_lattice);
-
-        for (int i = 0; i < nAtom; i++) {
-            if (atom[t][i][1] == 1) { // Found a Na+ ion
-                double min_dist_sq = 1.0e18; 
-                int closest_atom_idx = -1;
-
-                for (int j = 0; j < nAtom; j++) {
-                    if (atom[t][j][1] == 1) continue;
-
-                    double dr[3], df[3], dr_pbc[3];
-                    dr[0] = coord[t][j][0] - coord[t][i][0];
-                    dr[1] = coord[t][j][1] - coord[t][i][1];
-                    dr[2] = coord[t][j][2] - coord[t][i][2];
-
-                    df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[0][1]*dr[1] + inv_lattice[0][2]*dr[2];
-                    df[1] = inv_lattice[1][0]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[1][2]*dr[2];
-                    df[2] = inv_lattice[2][0]*dr[0] + inv_lattice[2][1]*dr[1] + inv_lattice[2][2]*dr[2];
-                    
-                    df[0] -= round(df[0]);
-                    df[1] -= round(df[1]);
-                    df[2] -= round(df[2]);
-
-                    dr_pbc[0] = current_lattice[0][0]*df[0] + current_lattice[1][0]*df[1] + current_lattice[2][0]*df[2];
-                    dr_pbc[1] = current_lattice[0][1]*df[0] + current_lattice[1][1]*df[1] + current_lattice[2][1]*df[2];
-                    dr_pbc[2] = current_lattice[0][2]*df[0] + current_lattice[1][2]*df[1] + current_lattice[2][2]*df[2];
-                    
-                    double distSq = dr_pbc[0]*dr_pbc[0] + dr_pbc[1]*dr_pbc[1] + dr_pbc[2]*dr_pbc[2];
-                    
-                    if (distSq < min_dist_sq) {
-                        min_dist_sq = distSq;
-                        closest_atom_idx = j;
-                    }
-                }
-
-                if (closest_atom_idx != -1) {
-                    int coordinated_cluster_id = cluster[t][closest_atom_idx];
-                    int closest_atom_type = atom[t][closest_atom_idx][1];
-                    fprintf(fp_na, "%d\t%d\t%d\t%d\t%d\t%f\n",
-                            t, i, closest_atom_idx, closest_atom_type,
-                            coordinated_cluster_id, sqrt(min_dist_sq));
-                }
-            }
-        }
+    
     }
 
-    fclose(fp_size);
-    fclose(fp_na);
-}
-
-
-int check_for_updates(int n, const int *arr1, const int *arr2) {
-    for (int i = 0; i < n; i++) {
-        if (arr1[i] != arr2[i]) return 1;
-    }
-    return 0;
-}
-
-void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]) {
-    double det = A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2]) -
-                 A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
-                 A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
-
-    if (fabs(det) < 1.0e-12) {
-        fprintf(stderr, "Warning: Matrix is singular, cannot invert. Using identity matrix.\n");
-        for(int i=0; i<3; ++i) for(int j=0; j<3; ++j) A_inv[i][j] = (i==j) ? 1.0 : 0.0;
-        return;
-    }
-
-    double inv_det = 1.0 / det;
-    A_inv[0][0] = (A[1][1] * A[2][2] - A[2][1] * A[1][2]) * inv_det;
-    A_inv[0][1] = (A[0][2] * A[2][1] - A[0][1] * A[2][2]) * inv_det;
-    A_inv[0][2] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) * inv_det;
-    A_inv[1][0] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) * inv_det;
-    A_inv[1][1] = (A[0][0] * A[2][2] - A[0][2] * A[2][0]) * inv_det;
-    A_inv[1][2] = (A[1][0] * A[0][2] - A[0][0] * A[1][2]) * inv_det;
-    A_inv[2][0] = (A[1][0] * A[2][1] - A[2][0] * A[1][1]) * inv_det;
-    A_inv[2][1] = (A[2][0] * A[0][1] - A[0][0] * A[2][1]) * inv_det;
-    A_inv[2][2] = (A[0][0] * A[1][1] - A[1][0] * A[0][1]) * inv_det;
 }

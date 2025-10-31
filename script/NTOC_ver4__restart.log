@@ -1,0 +1,7 @@
+--- My script actually sees: CUDA_VISIBLE_DEVICES='0' ---
+--- PyTorch is set to use 1 CPU threads ---
+Traceback (most recent call last):
+  File "/SSD2/sejung/NTOC/script/NTOC_Ver4_restart.py", line 32, in <module>
+    ENSEMBLE_INDEX = sys.argv[1]
+                     ~~~~~~~~^^^
+IndexError: list index out of range

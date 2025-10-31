@@ -29,7 +29,7 @@ output_path = "../../result"
 
 plt.style.use('seaborn-v0_8-whitegrid')
 
-plt.figure(figsize=(10, 7))
+plt.figure(figsize=(12, 8))
 plt.plot(df['Time(ps)'], df['MSD_mean'], color='r', label='MSD')
 plt.fill_between(
     df['Time(ps)'],

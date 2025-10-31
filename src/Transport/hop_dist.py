@@ -55,7 +55,7 @@ def analyze_and_save_distributions(data: np.ndarray, file_id: int, base_path: st
     print(f"\n[Analysis Result 1] h at PDF Peak: {h_at_peak:.4f} Å^2")
     
     # --- 4. Find Departure Point from Log-Linear Fit ---
-    tail_mask = sorted_data > h_at_peak + 0.25
+    tail_mask = sorted_data > h_at_peak + 0.5
     h_tail = sorted_data[tail_mask]
     ccdf_tail = y_values_ccdf[tail_mask]
 
@@ -94,7 +94,7 @@ def analyze_and_save_distributions(data: np.ndarray, file_id: int, base_path: st
     if h_departure is not None:
         ax1.axvline(h_departure, color='b', linestyle=':', lw=2, label=f'Departure h = {h_departure:.2f} Å^2')
     ax1.set_title('Probability Density Function (PDF)', fontsize=14)
-    ax1.set_xlim(0,6)
+    ax1.set_xlim(0,5)
     ax1.set_xlabel('Hop value, $h$ (Å^2)', fontsize=12)
     ax1.set_ylabel('Probability Density', fontsize=12)
     ax1.legend()
@@ -108,6 +108,7 @@ def analyze_and_save_distributions(data: np.ndarray, file_id: int, base_path: st
     ax2.set_title('CCDF (Log Scale) and Exponential Fit', fontsize=14)
     ax2.set_xlabel('Hop value, $h$ (Å^2)', fontsize=12)
     ax2.set_ylabel('Probability, $P(H > h)$', fontsize=12)
+    ax2.set_xlim(0,5)
     ax2.set_yscale('log')
     ax2.legend()
     ax2.grid(True, which="both", linestyle='--', alpha=0.6)

@@ -15,7 +15,7 @@ program ensemble_vanhove_analyzer
     double precision, allocatable :: mean_gs_arr(:,:), std_gs_arr(:,:)
 
     ! === Read Input File ===
-    open(unit=99, file='vanhove.inp', status='old', action='read')
+    open(unit=99, file='gsrt.inp', status='old', action='read')
     read(99, *) SIMULATION_NAME, NUM_ENSEMBLES
     read(99, *) SPECIES
     read(99, *) BINSIZE, MAX_R
@@ -42,8 +42,8 @@ program ensemble_vanhove_analyzer
     !  Main loop over each ensemble member
     ! =====================================
     do i = 1, NUM_ENSEMBLES
-        write(dir_part, '(A,A,A,I0)') '../dump/dump_', trim(SIMULATION_NAME), '_', i
-        write(file_part, '(I0,A)') i, '_product.xyz'
+        write(dir_part, '(A,A,A,I0)') '../../dump/dump_', trim(SIMULATION_NAME), '_', i
+        write(file_part, '(I0,A)') i, '_product_unwrapped.xyz'
         xyz_fname = trim(dir_part) // '/' // trim(file_part)
         print *, 'Processing: ', trim(xyz_fname)
 
@@ -76,7 +76,7 @@ program ensemble_vanhove_analyzer
     end do
 
     ! === Write Output File ===
-    write(out_fname, '(A,A,A)') '../result/gsrt_ensemble_average_', trim(SPECIES), '.dat'
+    write(out_fname, '(A,A,A)') '../../result/gsrt_ensemble_average_', trim(SPECIES), '.dat'
     open(unit=50, file=trim(out_fname), status='replace')
     
     do k = 1, N_T_DELTAS
@@ -219,7 +219,14 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, t_deltas,
                 dx = trajectory(tf_idx)%x(p1) - trajectory(t0_idx)%x(p1)
                 dy = trajectory(tf_idx)%y(p1) - trajectory(t0_idx)%y(p1)
                 dz = trajectory(tf_idx)%z(p1) - trajectory(t0_idx)%z(p1)
-                call min_image_dr(trajectory(t0_idx)%H, trajectory(t0_idx)%Hinv, dx, dy, dz)
+
+                ! **********************************************************************
+                ! *** CRITICAL FIX 1: Removed call to min_image_dr.                   ***
+                ! *** This code NOW ASSUMES the input trajectory file is UNWRAPPED,   ***
+                ! *** which is required for Gs(r,t).                                  ***
+                ! **********************************************************************
+                ! call min_image_dr(trajectory(t0_idx)%H, trajectory(t0_idx)%Hinv, dx, dy, dz)
+                
                 dist = sqrt(dx*dx + dy*dy + dz*dz)
                 if (dist < max_r) then
                     bin_index = ceiling(dist / binsize)
@@ -230,7 +237,7 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, t_deltas,
             end do
         end do
     end do
- 
+
     do k = 1, n_t
         if (n_origins(k) == 0) cycle
         do i = 1, n_bins
@@ -286,17 +293,27 @@ subroutine invert3x3(A, Ainv, detA)
     Ainv = transpose(reshape([c11,c21,c31, c12,c22,c32, c13,c23,c33], [3,3])) / detA
 end subroutine invert3x3
 
+! **************************************************
+! *** CRITICAL FIX 2: Corrected PBC logic below (transposed) ***
+! *** (Note: This function is no longer used by calculate_vanhove_single, 
+! *** but is corrected here for future use.)
+! **************************************************
 subroutine min_image_dr(H, Hinv, dx, dy, dz)
-    double precision, intent(in)    :: H(3,3), Hinv(3,3)
-    double precision, intent(inout) :: dx, dy, dz
+    double precision, intent(in)     :: H(3,3), Hinv(3,3)
+    double precision, intent(inout)  :: dx, dy, dz
     double precision :: sx, sy, sz
-    sx = Hinv(1,1)*dx + Hinv(1,2)*dy + Hinv(1,3)*dz
-    sy = Hinv(2,1)*dx + Hinv(2,2)*dy + Hinv(2,3)*dz
-    sz = Hinv(3,1)*dx + Hinv(3,2)*dy + Hinv(3,3)*dz
+
+    ! s = (Hinv)^T * dr (Corrected: Hinv(j,i))
+    sx = Hinv(1,1)*dx + Hinv(2,1)*dy + Hinv(3,1)*dz
+    sy = Hinv(1,2)*dx + Hinv(2,2)*dy + Hinv(3,2)*dz
+    sz = Hinv(1,3)*dx + Hinv(2,3)*dy + Hinv(3,3)*dz
+
     sx = sx - dnint(sx);  sy = sy - dnint(sy);  sz = sz - dnint(sz)
-    dx = H(1,1)*sx + H(1,2)*sy + H(1,3)*sz
-    dy = H(2,1)*sx + H(2,2)*sy + H(2,3)*sz
-    dz = H(3,1)*sx + H(3,2)*sy + H(3,3)*sz
+
+    ! dr = H^T * s_mic (Corrected: H(j,i))
+    dx = H(1,1)*sx + H(2,1)*sy + H(3,1)*sz
+    dy = H(1,2)*sx + H(2,2)*sy + H(3,2)*sz
+    dz = H(1,3)*sx + H(2,3)*sy + H(3,3)*sz
 end subroutine min_image_dr
 
 logical function safe_parse_atom_line(aline, sym, x, y, z)

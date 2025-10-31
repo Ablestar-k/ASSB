@@ -7,70 +7,80 @@ program ensemble_msd_analyzer
     integer :: NUM_TOTAL_PARTICLES
     double precision :: TIME_STEP_FS
     character(len=100) :: SIMULATION_NAME
+    character(len=100) :: BASE_FILE_NAME
+    character(len=100) :: OUT_FILE_NAME
     character(len=5) :: TARGET_SPECIES_NAME
 
     integer :: e, dt, stat, uout, ios, num_target_particles
     double precision :: time_ps, mean_msd_val, std_msd_val, sum_sq
     
-    double precision, allocatable :: disp_sum_total(:), msd_per_ensemble(:,:)
-    double precision, allocatable :: mean_msd(:), std_msd(:)
-    double precision, allocatable :: current_disp_sum(:)
+    ! <--- Modified: Added arrays for r^4 and alpha_2
+    double precision, allocatable :: disp_sum_total(:), disp_sum_4_total(:) 
+    double precision, allocatable :: msd_per_ensemble(:,:)
+    double precision, allocatable :: mean_msd(:), std_msd(:), mean_r4(:), alpha_2(:) 
+    double precision, allocatable :: current_disp_sum(:), current_disp_sum_4(:) 
     
     integer, allocatable :: actual_times(:), total_origins(:)
     integer, allocatable :: target_indices(:)
 
     character(len=512) :: xyz_fname, dir_part, file_part
 
-    print *, "--- Starting Ensemble MSD Analysis ---"
+    print *, "--- Starting Ensemble MSD & NGP Analysis ---" 
 
     open(unit=10, file='MSD.inp', status='old', action='read', iostat=ios)
-    read(10,*) SIMULATION_NAME, TARGET_SPECIES_NAME, TIME_STEP_FS, TOTAL_TIME_MAX, NUM_ENSEMBLES, NUM_TOTAL_PARTICLES
+    read(10,*) SIMULATION_NAME, BASE_FILE_NAME, OUT_FILE_NAME, TARGET_SPECIES_NAME 
+    read(10,*) TIME_STEP_FS, TOTAL_TIME_MAX, NUM_ENSEMBLES, NUM_TOTAL_PARTICLES
+    ! TOTAL_TIME_MAX is in number of frames
     close(10)
 
-    dir_part = 'dump_' // trim(SIMULATION_NAME) // '_' // trim(1)
-    file_part = trim(1), '_product.xyz'
-
-    !write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1
-    !write(file_part, '(I1,A)') 1, '_product.xyz'
-    xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
+    write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', 1
+    write(file_part, '(I1,A)') 1, trim(BASE_FILE_NAME)
+    xyz_fname = '../../dump/' // trim(dir_part) // '/' // trim(file_part)
     call prescan_trajectory(xyz_fname, NUM_TOTAL_PARTICLES, TARGET_SPECIES_NAME, &
                               num_target_particles, target_indices)
     print *, "Found", num_target_particles, " target particles ('"//trim(TARGET_SPECIES_NAME)//"') from pre-scan."
 
 
     allocate(disp_sum_total(TOTAL_TIME_MAX), stat=stat); if (stat /= 0) stop 'alloc disp_sum_total failed'
+    allocate(disp_sum_4_total(TOTAL_TIME_MAX), stat=stat); if (stat /= 0) stop 'alloc disp_sum_4_total failed' ! <--- Added
     allocate(msd_per_ensemble(TOTAL_TIME_MAX, NUM_ENSEMBLES), stat=stat); if (stat /= 0) stop 'alloc msd_per_ensemble failed'
     allocate(actual_times(NUM_ENSEMBLES), stat=stat); if (stat /= 0) stop 'alloc actual_times failed'
     
     disp_sum_total = 0.0d0
+    disp_sum_4_total = 0.0d0 
     msd_per_ensemble = 0.0d0
 
     ! Loop over all ensembles
     do e = 1, NUM_ENSEMBLES
         allocate(current_disp_sum(TOTAL_TIME_MAX), stat=stat)
+        allocate(current_disp_sum_4(TOTAL_TIME_MAX), stat=stat) 
         
         write(dir_part, '(A,A,A,I1)') 'dump_', trim(SIMULATION_NAME), '_', e
-        write(file_part, '(I1,A)') e, '_product.xyz'
-        xyz_fname = '../dump/' // trim(dir_part) // '/' // trim(file_part)
+        write(file_part, '(I1,A)') e, trim(BASE_FILE_NAME)
+        xyz_fname = '../../dump/' // trim(dir_part) // '/' // trim(file_part)
         
         print *, "Processing Ensemble #", e, ": ", trim(xyz_fname)
 
         call calculate_disp_sum_single(xyz_fname, TOTAL_TIME_MAX, NUM_TOTAL_PARTICLES, &
-                                       target_indices, num_target_particles, &
-                                       current_disp_sum, actual_times(e))
+                                         target_indices, num_target_particles, &
+                                         current_disp_sum, current_disp_sum_4, actual_times(e))
         
         disp_sum_total(1:actual_times(e)) = disp_sum_total(1:actual_times(e)) + current_disp_sum(1:actual_times(e))
+        disp_sum_4_total(1:actual_times(e)) = disp_sum_4_total(1:actual_times(e)) + current_disp_sum_4(1:actual_times(e)) ! <--- Added
         
         do dt = 1, actual_times(e) - 1
             msd_per_ensemble(dt, e) = current_disp_sum(dt) / (dble(num_target_particles) * dble(actual_times(e) - dt))
         end do
         deallocate(current_disp_sum)
+        deallocate(current_disp_sum_4) 
     end do
 
     print *, ""
     print *, "--- Aggregating results and calculating statistics ---"
 
     allocate(mean_msd(TOTAL_TIME_MAX), std_msd(TOTAL_TIME_MAX), total_origins(TOTAL_TIME_MAX))
+    allocate(mean_r4(TOTAL_TIME_MAX), alpha_2(TOTAL_TIME_MAX))
+
     total_origins = 0
 
     ! Calculate total number of origins for each dt
@@ -82,12 +92,20 @@ program ensemble_msd_analyzer
         end do
     end do
 
-    ! Calculate mean MSD and standard deviation
+    ! Calculate mean MSD, mean r^4, std_dev, and alpha_2
     do dt = 1, TOTAL_TIME_MAX - 1
         if (total_origins(dt) > 0 .and. num_target_particles > 0) then
-            mean_msd(dt) = disp_sum_total(dt) / (dble(num_target_particles) * dble(total_origins(dt)))
+            mean_msd(dt) = disp_sum_total(dt) / (dble(num_target_particles) * dble(total_origins(dt))) ! <r^2>
+            mean_r4(dt) = disp_sum_4_total(dt) / (dble(num_target_particles) * dble(total_origins(dt))) ! <r^4>
         else
             mean_msd(dt) = 0.0d0
+            mean_r4(dt) = 0.0d0 
+        end if
+        
+        if (mean_msd(dt) > 1.0d-12) then 
+             alpha_2(dt) = (3.0d0 * mean_r4(dt)) / (5.0d0 * mean_msd(dt)**2) - 1.0d0
+        else
+             alpha_2(dt) = 0.0d0
         end if
         
         sum_sq = 0.0d0
@@ -103,19 +121,24 @@ program ensemble_msd_analyzer
     end do
 
     ! Write final output file
-    open(newunit=uout, file='../result/MSD_ensemble_average.dat', status='replace', action='write', iostat=ios)
+    open(newunit=uout, file='../../result/' // trim(TARGET_SPECIES_NAME)// trim(OUT_FILE_NAME) , &
+       status='replace', action='write', iostat=ios)   
     if (ios /= 0) stop 'Error creating output file.'
 
-    write(uout, '(A18, A24, A24)') '# Time (ps)', 'MSD_mean (Angstrom^2)', 'MSD_std (Angstrom^2)'
+    write(uout, '(A18, A24, A24, A24, A24, A24)') &
+         '# Time (ps)', 'MSD_mean <r^2>', 'MSD_std', '<r^4>', '<r^2>^2', 'alpha_2(t)'
+         
     do dt = 1, TOTAL_TIME_MAX - 1
         time_ps = dble(dt) * TIME_STEP_FS / 1000.0d0
-        write(uout, '(F18.6, F24.8, F24.8)') time_ps, mean_msd(dt), std_msd(dt)
+        write(uout, '(F18.6, F24.8, F24.8, F24.8, F24.8, F24.8)') &
+             time_ps, mean_msd(dt), std_msd(dt), mean_r4(dt), mean_msd(dt)**2, alpha_2(dt)
     end do
     close(uout)
 
-    print *, "--- Analysis complete. Output saved to: MSD_ensemble_average.dat ---"
-
+    print *, "--- Analysis complete. Results written to ../result/"// trim(TARGET_SPECIES_NAME)// trim(OUT_FILE_NAME) // " ---"
+    
     deallocate(disp_sum_total, msd_per_ensemble, actual_times, mean_msd, std_msd, total_origins, target_indices)
+    deallocate(disp_sum_4_total, mean_r4, alpha_2)
 
 contains
 
@@ -132,7 +155,7 @@ contains
         character(len=2048) :: header_line, line_buffer
 
         open(newunit=uin, file=trim(trajectory_file_name), status='old', action='read', iostat=ios)
-        print *, "Pre scan Trajectory file : ", trajectory_file_name
+        print *, "Pre scan file : ", xyz_fname 
 
         if (ios /= 0) stop 'Pre-scan: Could not open file.'
 
@@ -168,18 +191,21 @@ contains
     end subroutine prescan_trajectory
 
     subroutine calculate_disp_sum_single(trajectory_file_name, total_time_max, num_total_particles, &
-                                         target_indices, num_target_particles, disp_sum_out, t_actual)
+                                         target_indices, num_target_particles, &
+                                         disp_sum_out, disp_sum_4_out, t_actual)
         implicit none
         character(len=*), intent(in) :: trajectory_file_name
         integer, intent(in) :: total_time_max, num_total_particles, num_target_particles
         integer, intent(in) :: target_indices(num_target_particles)
         double precision, intent(out) :: disp_sum_out(total_time_max)
+        double precision, intent(out) :: disp_sum_4_out(total_time_max) 
         integer, intent(out) :: t_actual
 
-        integer :: t, i, dt, ios, uin, natoms_in_frame
+        integer :: t, i, dt, ios, uin, natoms_in_frame, idx
         double precision, allocatable :: r(:,:,:), r_unwrapped(:,:,:), cell(:,:,:)
         double precision :: inv_lattice_matrix(3,3), displacement(3), frac_displacement(3)
         double precision :: ax, ay, az, bx, by, bz, cx, cy, cz
+        double precision :: dx, dy, dz, r_sq, r_4 
         character(len=10) :: species_name_from_file
         character(len=2048) :: header_line, line_buffer
         character(len=512) :: number_string
@@ -189,6 +215,7 @@ contains
         allocate(r_unwrapped(num_total_particles, total_time_max, 3), stat=ios); if (ios/=0) stop 'Alloc r_unwrapped failed'
         allocate(cell(3,3,total_time_max), stat=ios); if (ios/=0) stop 'Alloc cell failed'
         disp_sum_out = 0.0d0
+        disp_sum_4_out = 0.0d0 
 
         open(newunit=uin, file=trim(trajectory_file_name), status='old', action='read', iostat=ios)
         if (ios /= 0) then
@@ -237,8 +264,18 @@ contains
 
         do dt = 1, t_actual - 1
             do t = 1, t_actual - dt
-                disp_sum_out(dt) = disp_sum_out(dt) + &
-                    sum( ( r_unwrapped(target_indices, t+dt, :) - r_unwrapped(target_indices, t, :) )**2 )
+                do i = 1, num_target_particles
+                    idx = target_indices(i) 
+                    dx = r_unwrapped(idx, t+dt, 1) - r_unwrapped(idx, t, 1)
+                    dy = r_unwrapped(idx, t+dt, 2) - r_unwrapped(idx, t, 2)
+                    dz = r_unwrapped(idx, t+dt, 3) - r_unwrapped(idx, t, 3)
+                    
+                    r_sq = dx*dx + dy*dy + dz*dz
+                    r_4  = r_sq * r_sq  
+                    
+                    disp_sum_out(dt) = disp_sum_out(dt) + r_sq
+                    disp_sum_4_out(dt) = disp_sum_4_out(dt) + r_4
+                end do
             end do
         end do
 
@@ -246,7 +283,7 @@ contains
     end subroutine calculate_disp_sum_single
 
     subroutine invert_matrix_3x3(A, A_inv)
-        double precision, intent(in)  :: A(3,3)
+        double precision, intent(in)   :: A(3,3)
         double precision, intent(out) :: A_inv(3,3)
         double precision :: det_A
         det_A = A(1,1) * (A(2,2)*A(3,3) - A(3,2)*A(2,3)) - &

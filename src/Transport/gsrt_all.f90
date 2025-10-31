@@ -15,10 +15,10 @@ program ensemble_vanhove_analyzer
     
     ! Data storage
     double precision, allocatable :: all_gs_values(:,:,:) 
-    double precision, allocatable :: current_gs(:,:)      
+    double precision, allocatable :: current_gs(:,:)       
     double precision, allocatable :: mean_gs_arr(:,:), std_gs_arr(:,:) 
 
-    open(unit=99, file='vanhove_all.inp', status='old', action='read')
+    open(unit=99, file='gsrt_all.inp', status='old', action='read')
     read(99, *) SIMULATION_NAME, BASE_FILE_NAME, SPECIES
     read(99, *) NUM_ENSEMBLES
     read(99, *) BINSIZE, MAX_R
@@ -59,13 +59,14 @@ program ensemble_vanhove_analyzer
 
     ! === Statistics calculation ===
     do dt = 1, MAX_T_DELTA  
-        do i = 1, n_bins 
+        do i = 1, n_bins  
             block_stats: block
                 double precision :: mean_val, sum_sq, std_val
                 mean_val = sum(all_gs_values(i, dt, :)) / dble(NUM_ENSEMBLES)
                 sum_sq = sum((all_gs_values(i, dt, :) - mean_val)**2)
                 
                 if (NUM_ENSEMBLES > 1) then
+                    ! Use sample standard deviation (N-1)
                     std_val = sqrt(sum_sq / dble(NUM_ENSEMBLES - 1))
                 else
                     std_val = 0.0d0
@@ -214,13 +215,14 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
         end if
     end do
 
+
     ! === Main Loop ===
     allocate(hist_sum(n_bins, max_t_delta), n_origins(max_t_delta))
     hist_sum = 0
     n_origins = 0
     
     do t0_idx = 1, num_frames ! Set zero point(t0)
-        do dt = 1, max_t_delta   ! Set time interval
+        do dt = 1, max_t_delta    ! Set time interval
             tf_idx = t0_idx + dt
             if (tf_idx > num_frames) cycle
             
@@ -232,7 +234,6 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
                 dy = trajectory(tf_idx)%y(p1) - trajectory(t0_idx)%y(p1)
                 dz = trajectory(tf_idx)%z(p1) - trajectory(t0_idx)%z(p1)
                 
-                call min_image_dr(trajectory(t0_idx)%H, trajectory(t0_idx)%Hinv, dx, dy, dz)
                 dist = sqrt(dx*dx + dy*dy + dz*dz)
 
                 if (dist < max_r) then
@@ -253,8 +254,9 @@ subroutine calculate_vanhove_single(xyz_fname, species, n_bins, max_r, max_t_del
             r = (dble(i) - 0.5d0) * binsize
             if (r > 1.d-8) then
                 shell_vol = 4.0d0 * pi * r**2 * binsize
+                ! Normalization: (Avg counts per origin) / (N_species * Shell_Volume)
                 gs_out(i, dt) = (dble(hist_sum(i,dt)) / dble(n_origins(dt))) &
-                             / dble(n_species) / shell_vol
+                            / dble(n_species) / shell_vol
             else
                 gs_out(i, dt) = 0.0d0
             end if
@@ -303,17 +305,23 @@ subroutine invert3x3(A, Ainv, detA)
     Ainv = transpose(reshape([c11,c21,c31, c12,c22,c32, c13,c23,c33], [3,3])) / detA
 end subroutine invert3x3
 
+
 subroutine min_image_dr(H, Hinv, dx, dy, dz)
-    double precision, intent(in)    :: H(3,3), Hinv(3,3)
-    double precision, intent(inout) :: dx, dy, dz
+    double precision, intent(in)     :: H(3,3), Hinv(3,3)
+    double precision, intent(inout)  :: dx, dy, dz
     double precision :: sx, sy, sz
-    sx = Hinv(1,1)*dx + Hinv(1,2)*dy + Hinv(1,3)*dz
-    sy = Hinv(2,1)*dx + Hinv(2,2)*dy + Hinv(2,3)*dz
-    sz = Hinv(3,1)*dx + Hinv(3,2)*dy + Hinv(3,3)*dz
+
+    ! s = (Hinv)^T * dr (Corrected: Hinv(j,i))
+    sx = Hinv(1,1)*dx + Hinv(2,1)*dy + Hinv(3,1)*dz
+    sy = Hinv(1,2)*dx + Hinv(2,2)*dy + Hinv(3,2)*dz
+    sz = Hinv(1,3)*dx + Hinv(2,3)*dy + Hinv(3,3)*dz
+
     sx = sx - dnint(sx);  sy = sy - dnint(sy);  sz = sz - dnint(sz)
-    dx = H(1,1)*sx + H(1,2)*sy + H(1,3)*sz
-    dy = H(2,1)*sx + H(2,2)*sy + H(2,3)*sz
-    dz = H(3,1)*sx + H(3,2)*sy + H(3,3)*sz
+
+    ! dr = H^T * s_mic (CorrectED: H(j,i))
+    dx = H(1,1)*sx + H(2,1)*sy + H(3,1)*sz
+    dy = H(1,2)*sx + H(2,2)*sy + H(3,2)*sz
+    dz = H(1,3)*sx + H(2,3)*sy + H(3,3)*sz
 end subroutine min_image_dr
 
 logical function safe_parse_atom_line(aline, sym, x, y, z)

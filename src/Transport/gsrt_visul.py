@@ -4,8 +4,11 @@ import re
 import matplotlib.colors as mcolors
 from cycler import cycler
 
-def parse_gsrt_data(filepath):
+SPECIES = 'Na'
+INPUT_FILE = f'../../result/gsrt_ensemble_average_{SPECIES}.dat'
+SELECTED_TIMES_PS = [4.0, 40.0, 400.0, 1000.0, 2000.0, 4000.0]
 
+def parse_gsrt_data(filepath):
     data = {}
     current_time = None
     time_interval = None
@@ -59,14 +62,13 @@ def parse_gsrt_data(filepath):
     print("File parsing complete.")
     return sorted_data, time_interval
 
-
-def plot_gsrt_vs_r(data, selected_times, species_name, figname="../result/gs_vs_r.png"):
+def plot_gsrt_vs_r(data, selected_times, species_name, figname="../../result/gs_vs_r.png"):
     if not data:
         print("No data available to plot.")
         return
 
-    plt.style.use('seaborn-v0_8-whitegrid')
-    fig, ax = plt.subplots(figsize=(10, 7))
+    #plt.style.use('seaborn-v0_8-whitegrid')
+    fig, ax = plt.subplots(figsize=(14, 9))
     
     num_lines = len(selected_times)
     ax.set_prop_cycle(cycler('color', plt.cm.viridis(np.linspace(0, 1, num_lines))))
@@ -82,21 +84,20 @@ def plot_gsrt_vs_r(data, selected_times, species_name, figname="../result/gs_vs_
         else:
             print(f"Warning: No data found for selected time t = {t} ps.")
 
-    ax.set_xlabel('r (Å)', fontsize=14)
-    ax.set_ylabel(r'$G_s(r, t) \quad (\AA^{-3})$', fontsize=14)
-    ax.set_title(f'Self-Part of Van Hove Correlation Function for {species_name}', fontsize=16)
-    ax.legend(title="Time Delay", fontsize=10)
+    ax.set_xlabel('r (Å)')
+    ax.set_ylabel(r'$G_s(r, t) \quad (\AA^{-3})$')
+    ax.set_title(f'Self-Part of Van Hove Correlation Function for {species_name}')
+    ax.legend(title="Time Delay")
     ax.set_xlim(0, 5)
-    #ax.set_xlim(0, max(data[list(data.keys())[0]]['r']))
     ax.set_ylim(bottom=0)
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
 
     plt.tight_layout()
     plt.savefig(figname, dpi=300)
     print(f"Plot saved successfully: '{figname}'")
-    plt.show()
+    plt.close(fig)
 
-def plot_gsrt_heatmap(data, species_name, figname="../result/gs_heatmap.png"):
+
+def plot_gsrt_heatmap(data, species_name, figname="../../result/gs_heatmap.png"):
     if not data:
         print("No data available to plot heatmap.")
         return
@@ -110,35 +111,81 @@ def plot_gsrt_heatmap(data, species_name, figname="../result/gs_heatmap.png"):
         gs_grid[:, i] = data[t]['gs_mean']
 
     plt.style.use('default')
-    fig, ax = plt.subplots(figsize=(12, 8))
+    fig, ax = plt.subplots(figsize=(12, 8)) 
     
     epsilon = 1e-10
     im = ax.pcolormesh(times, r_values, gs_grid + epsilon, shading='gouraud', cmap='viridis', 
                        norm=mcolors.LogNorm(vmin=np.min(gs_grid[gs_grid>0]), vmax=np.max(gs_grid)))
     
-    ax.set_xlabel('Time (ps)', fontsize=14)
-    ax.set_ylabel('r (Å)', fontsize=14)
-    ax.set_title(f'Heatmap of $G_s(r, t)$ for {species_name}', fontsize=16)
+    ax.set_xlabel('Time (ps)')
+    ax.set_ylabel('r (Å)')
+    ax.set_title(f'Heatmap of $G_s(r, t)$ for {species_name}')
 
     cbar = fig.colorbar(im, ax=ax)
-    cbar.set_label(r'$G_s(r, t) \quad (\AA^{-3})$', fontsize=14)
+    cbar.set_label(r'$G_s(r, t) \quad (\AA^{-3})$')
     
     plt.tight_layout()
     plt.savefig(figname, dpi=300)
     print(f"Heatmap saved successfully: '{figname}'")
-    plt.show()
+    plt.close(fig) 
+
+def plot_gsrt_4pir2_vs_r_logy(data, selected_times, species_name, figname="../../result/gs_4pir2_logy_vs_r.png"):
+    if not data:
+        print("No data available to plot.")
+        return
+
+    #plt.style.use('seaborn-v0_8-whitegrid')
+    fig, ax = plt.subplots(figsize=(18, 10))
+    
+    num_lines = len(selected_times)
+    ax.set_prop_cycle(cycler('color', plt.cm.viridis(np.linspace(0, 1, num_lines))))
+
+    for t in selected_times:
+        if t in data:
+            r = data[t]['r']
+            gs_mean = data[t]['gs_mean']
+            gs_std = data[t]['gs_std']
+            
+            four_pi_r2 = 4.0 * np.pi * r**2
+            
+         
+            y_mean = four_pi_r2 * gs_mean
+            y_std_band = four_pi_r2 * gs_std 
+            
+          
+            valid_indices = r > 1e-6 
+            r_plot = r[valid_indices]
+            y_mean_plot = y_mean[valid_indices]
+            y_std_band_plot = y_std_band[valid_indices]
+
+            if len(r_plot) > 0:
+                ax.plot(r_plot, y_mean_plot, label=f't = {t} ps')
+                ax.fill_between(r_plot, y_mean_plot - y_std_band_plot, y_mean_plot + y_std_band_plot, alpha=0.2)
+  
+        else:
+            print(f"Warning: No data found for selected time t = {t} ps.")
+
+    ax.set_xlabel('r (Å)')
+    ax.set_ylabel(r'$4 \pi r^2 G_s(r, t)$') 
+    ax.set_title(r'$4 \pi r^2 G_s(r, t)$ vs r for ' + f'{species_name}')
+    ax.legend()
+    #ax.set_xlim(0, 5)
+    
+    ax.set_yscale('log') 
+
+    plt.tight_layout()
+    plt.savefig(figname, dpi=300)
+    print(f"Plot saved successfully: '{figname}'")
+    plt.close(fig)
+
 
 if __name__ == '__main__':
-    SPECIES = 'Na'
-    
-    INPUT_FILE = f'../result/gsrt_ensemble_average_{SPECIES}.dat'
-
-    SELECTED_TIMES_PS = [10.0, 100.0, 200.0, 500.0, 1000.0]
 
     gsrt_data, t_interval = parse_gsrt_data(INPUT_FILE)
     
     if gsrt_data:
         plot_gsrt_vs_r(gsrt_data, SELECTED_TIMES_PS, SPECIES)
+        
+        plot_gsrt_4pir2_vs_r_logy(gsrt_data, SELECTED_TIMES_PS, SPECIES)
 
-        plot_gsrt_heatmap(gsrt_data, SPECIES)
-
+        # plot_gsrt_heatmap(gsrt_data, SPECIES)

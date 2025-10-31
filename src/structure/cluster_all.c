@@ -3,50 +3,43 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define LINESIZE 1024       
-#define MAXTIMESTEP 100000  
+#define LINESIZE 1024
+#define MAXTIMESTEP 100000
 
 // --- Pair cutoff distances in Angstroms ---
-// These values should be set based on RDF analysis.
-#define TA_TA_CUTOFF 4.3 
-#define TA_O_CUTOFF  2.9 
-#define TA_CL_CUTOFF 3.5  
-#define O_O_CUTOFF   3.5 
-#define O_CL_CUTOFF  3.2  
-#define CL_CL_CUTOFF 3.8  
+#define TA_TA_CUTOFF 4.3
+#define TA_O_CUTOFF  2.9
+#define TA_CL_CUTOFF 3.5
+#define O_O_CUTOFF   3.5
+#define O_CL_CUTOFF  3.2
+#define CL_CL_CUTOFF 3.8
 
 
 // --- Global Variables ---
 int numTraj = 0;
 int numAtoms[MAXTIMESTEP];
-
-// Data structures to store trajectory information
-int ***atom;            // atom[timestep][atom_idx][0:id, 1:type]
-double ***coord;         // coord[timestep][atom_idx][0:x, 1:y, 2:z]
-double ***lattice_vectors; // lattice_vectors[timestep][vec_idx(0-2)][comp(0-2)]
-
-// Atom counts
+int ***atom;
+double ***coord;
+double ***lattice_vectors;
 int numNa, numTa, numO, numCl;
-
-// Cluster information
-int **cluster; // cluster[timestep][atom_idx]
+int **cluster;
 
 
 int read_xyz_traj(const char *filename);
 void perform_clustering();
-void analyze_and_write_clusters(const char *filename);
+void analyze_and_write_clusters(const char *cluster_size_filename, const char *na_coord_filename);
 int check_for_updates(int n, const int *arr1, const int *arr2);
 void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]);
 
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
-        printf("USAGE: %s <input_trajectory.xyz> <output_cluster_size.dat>\n", argv[0]);
+    if (argc != 4) {
+        printf("USAGE: %s <input.xyz> <cluster_size.dat> <na_coord.dat>\n", argv[0]);
         exit(1);
     }
     const char *input_file = argv[1];
-    const char *output_file = argv[2];
-
+    const char *cluster_size_output_file = argv[2];
+    const char *na_coord_output_file = argv[3]; 
 
     atom = (int***)malloc(sizeof(int**) * MAXTIMESTEP);
     coord = (double***)malloc(sizeof(double**) * MAXTIMESTEP);
@@ -84,7 +77,7 @@ int main(int argc, char *argv[]) {
 
     perform_clustering();
 
-    analyze_and_write_clusters(output_file);
+    analyze_and_write_clusters(cluster_size_output_file, na_coord_output_file);
 
     printf("\tFreeing memory...\n");
     for (int t = 0; t < numTraj; t++) {
@@ -106,7 +99,6 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-
 
 int read_xyz_traj(const char *filename) {
     FILE *fp = fopen(filename, "r");
@@ -238,7 +230,7 @@ void perform_clustering() {
                     } else if (type_i == 4 && type_j == 4) { // Cl-Cl
                         current_cutoff_sq = cl_cl_cutoff_sq;
                     } else {
-                        current_cutoff_sq = 1.0e9; 
+                        continue; 
                     }
 
                     double dr[3], df[3], dr_pbc[3];
@@ -285,16 +277,14 @@ void perform_clustering() {
 }
 
 
-
-void analyze_and_write_clusters(const char *filename) {
-    printf("\tAnalyzing cluster lists and writing to %s...\n", filename);
-    FILE *fp_size = fopen(filename, "w");
+void analyze_and_write_clusters(const char *cluster_size_filename, const char *na_coord_filename) {
+    printf("\tAnalyzing cluster lists and writing to %s...\n", cluster_size_filename);
+    FILE *fp_size = fopen(cluster_size_filename, "w");
     if (!fp_size) {
         perror("Error opening cluster size output file");
         return;
     }
 
-    const char* na_coord_filename = "na_coordination.dat";
     FILE *fp_na = fopen(na_coord_filename, "w");
     if (!fp_na) {
         perror("Error opening Na+ coordination output file");
@@ -319,7 +309,7 @@ void analyze_and_write_clusters(const char *filename) {
         }
 
         for (int i = 0; i < nAtom; i++) {
-            if (cluster[t][i] != -1) { // Exclude non-clustered atoms (Na)
+            if (cluster[t][i] != -1) {
                 counter[cluster[t][i]]++;
             }
         }
@@ -346,9 +336,8 @@ void analyze_and_write_clusters(const char *filename) {
                 double min_dist_sq = 1.0e18; 
                 int closest_atom_idx = -1;
 
-                // Find the closest (Ta, O, Cl) atom to this Na+
                 for (int j = 0; j < nAtom; j++) {
-                    if (atom[t][j][1] == 1) continue; // Skip other Na+ ions
+                    if (atom[t][j][1] == 1) continue;
 
                     double dr[3], df[3], dr_pbc[3];
                     dr[0] = coord[t][j][0] - coord[t][i][0];
@@ -398,7 +387,6 @@ int check_for_updates(int n, const int *arr1, const int *arr2) {
     return 0;
 }
 
-
 void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]) {
     double det = A[0][0] * (A[1][1] * A[2][2] - A[2][1] * A[1][2]) -
                  A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) +
@@ -421,4 +409,3 @@ void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]) {
     A_inv[2][1] = (A[2][0] * A[0][1] - A[0][0] * A[2][1]) * inv_det;
     A_inv[2][2] = (A[0][0] * A[1][1] - A[1][0] * A[0][1]) * inv_det;
 }
-

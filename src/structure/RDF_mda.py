@@ -5,10 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-BASE_DIR_NAME = "../dump/dump_NTOC_ver3_{}"
+BASE_DIR_NAME = "../../dump/dump_NTOC_ver4_{}"
 NUM_ENSEMBLES = 5
 ATOM_GROUP_TO_ANALYZE_1 = "name Na"
-ATOM_GROUP_TO_ANALYZE_2 = "name Cl"
+ATOM_GROUP_TO_ANALYZE_2 = "name O"
 NBINS = 400
 RANGE = (0.0, 20.0)
 SKIP_PERCENT = 0.0
@@ -105,7 +105,7 @@ if all_rdfs:
     
     atoms_name_1 = ATOM_GROUP_TO_ANALYZE_1.split()[-1]
     atoms_name_2 = ATOM_GROUP_TO_ANALYZE_2.split()[-1]
-    output_file_path = "../result"
+    output_file_path = "../../result"
     output_filename = f'rdf_{atoms_name_1}-{atoms_name_2}.txt'
     output_file = os.path.join(output_file_path, output_filename)
 

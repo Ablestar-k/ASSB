@@ -65,7 +65,7 @@ QUENCHING_EQ_NVT_STEPS = 250000 # Production for 0.5 ns
 
 
 # Production(NVT)
-PROD_NVT_RUN_STEPS = 5000000 # Production for 10 ns 
+PROD_NVT_RUN_STEPS = 6631000 # Production for 10 ns 
 
 # I/O Parameters
 THERMO_FREQ = 1000  # Frequency for thermodynamic data (Every 2 ps)
