@@ -114,13 +114,13 @@ int main(int argc, char *argv[]) {
     classify_na_ions(); 
     classify_oxygens();
     classify_na_by_oxygen(na_o_coord_output_file);
-  
+ 
 
     analyze_and_write_clusters(cluster_size_output_file, na_coord_output_file, cluster_dist_output_file);
 
     calculate_van_hove_classified(vanHove_poly_output_file, vanHove_iso_output_file);
 
-  
+ 
     calculate_msd_classified_ta(msd_ta_poly_output_file, msd_ta_iso_output_file);
     calculate_van_hove_na_oxygen(vanHove_na_nbo_output_file, vanHove_na_bo_output_file);
 
@@ -189,9 +189,9 @@ int read_xyz_traj(const char *filename) {
         char *lattice_str = strstr(line, "Lattice=\"");
         if (lattice_str != NULL) {
             sscanf(lattice_str + 9, "%lf %lf %lf %lf %lf %lf %lf %lf %lf",
-                   &lattice_vectors[numTraj][0][0], &lattice_vectors[numTraj][0][1], &lattice_vectors[numTraj][0][2],
-                   &lattice_vectors[numTraj][1][0], &lattice_vectors[numTraj][1][1], &lattice_vectors[numTraj][1][2],
-                   &lattice_vectors[numTraj][2][0], &lattice_vectors[numTraj][2][1], &lattice_vectors[numTraj][2][2]);
+                  &lattice_vectors[numTraj][0][0], &lattice_vectors[numTraj][0][1], &lattice_vectors[numTraj][0][2],
+                  &lattice_vectors[numTraj][1][0], &lattice_vectors[numTraj][1][1], &lattice_vectors[numTraj][1][2],
+                  &lattice_vectors[numTraj][2][0], &lattice_vectors[numTraj][2][1], &lattice_vectors[numTraj][2][2]);
         } else {
             fprintf(stderr, "Warning: 'Lattice' information not found in frame %d header. Assuming non-periodic.\n", numTraj);
             for(int i=0; i<3; ++i) for(int j=0; j<3; ++j) lattice_vectors[numTraj][i][j] = (i==j) ? 1.0e6 : 0.0; // Large orthogonal box
@@ -210,7 +210,7 @@ int read_xyz_traj(const char *filename) {
             coord[numTraj][i] = (double*)malloc(sizeof(double) * 3);
             
             sscanf(line, "%s %lf %lf %lf",
-                   species_name, &coord[numTraj][i][0], &coord[numTraj][i][1], &coord[numTraj][i][2]);
+                  species_name, &coord[numTraj][i][0], &coord[numTraj][i][1], &coord[numTraj][i][2]);
 
             atom[numTraj][i][0] = i; // Atom ID
             if (strcmp(species_name, "Na") == 0) atom[numTraj][i][1] = 1;
@@ -289,9 +289,9 @@ void perform_clustering() {
                     dr[1] = coord[t][j][1] - coord[t][i][1];
                     dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                    df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[0][1]*dr[1] + inv_lattice[0][2]*dr[2];
-                    df[1] = inv_lattice[1][0]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[1][2]*dr[2];
-                    df[2] = inv_lattice[2][0]*dr[0] + inv_lattice[2][1]*dr[1] + inv_lattice[2][2]*dr[2];
+                    df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
+                    df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
+                    df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
 
                     df[0] = df[0] - round(df[0]);
                     df[1] = df[1] - round(df[1]);
@@ -323,7 +323,7 @@ void perform_clustering() {
         }
         
         cluster[t] = newCluster; 
-        free(oldCluster);       
+        free(oldCluster);      
     }
 }
 
@@ -387,7 +387,7 @@ void classify_na_ions() {
                              cluster_Cl_count[c] == 5 &&
                              cluster_size[c] == 7);
             
-              if (is_TaCl6 || is_TaOCl5) {
+             if (is_TaCl6 || is_TaOCl5) {
                 cluster_type[c] = CLUSTER_TYPE_ISOLATED;
             } else {
                 cluster_type[c] = CLUSTER_TYPE_POLYMERIC;
@@ -414,9 +414,9 @@ void classify_na_ions() {
                     dr[1] = coord[t][j][1] - coord[t][i][1];
                     dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                    df[0] = inv_lattice[0][0] * dr[0] + inv_lattice[0][1] * dr[1] + inv_lattice[0][2] * dr[2];
-                    df[1] = inv_lattice[1][0] * dr[0] + inv_lattice[1][1] * dr[1] + inv_lattice[1][2] * dr[2];
-                    df[2] = inv_lattice[2][0] * dr[0] + inv_lattice[2][1] * dr[1] + inv_lattice[2][2] * dr[2];
+                    df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
+                    df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
+                    df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
 
                     df[0] -= round(df[0]);
                     df[1] -= round(df[1]);
@@ -540,9 +540,9 @@ void analyze_and_write_clusters(const char *cluster_size_filename, const char *n
                     dr[1] = coord[t][j][1] - coord[t][i][1];
                     dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                    df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[0][1]*dr[1] + inv_lattice[0][2]*dr[2];
-                    df[1] = inv_lattice[1][0]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[1][2]*dr[2];
-                    df[2] = inv_lattice[2][0]*dr[0] + inv_lattice[2][1]*dr[1] + inv_lattice[2][2]*dr[2];
+                    df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
+                    df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
+                    df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
                     
                     df[0] -= round(df[0]);
                     df[1] -= round(df[1]);
@@ -593,7 +593,7 @@ void calculate_van_hove_classified(const char *poly_filename, const char *iso_fi
     fprintf(fp_poly, "# Gs(r,t) for Na+ (Polymeric)\n# Row: dt (fs), Col: r (A) (bin_size=%f A)\n", binsize);
     fprintf(fp_iso, "# Gs(r,t) for Na+ (Isolated)\n# Row: dt (fs), Col: r (A) (bin_size=%f A)\n", binsize);
 
-    int max_delta_t = numTraj / 3; 
+    int max_delta_t = numTraj / 2; 
 
 
     for (int dt = 0; dt < max_delta_t; dt += DELTA_T) {
@@ -612,6 +612,7 @@ void calculate_van_hove_classified(const char *poly_filename, const char *iso_fi
             for (int i = 0; i < numAtoms[start]; i++) {
                 if (atom[start][i][1] != 1) continue; 
 
+                // Unwrapped trajectory assumed
                 double dx = coord[start + dt][i][0] - coord[start][i][0];
                 double dy = coord[start + dt][i][1] - coord[start][i][1];
                 double dz = coord[start + dt][i][2] - coord[start][i][2];
@@ -637,6 +638,11 @@ void calculate_van_hove_classified(const char *poly_filename, const char *iso_fi
             for (int j = 0; j < NUMBINS; j++) {
                 double r = (j + 0.5) * binsize;
                 double dr = binsize;
+                // Avoid division by zero for r=0
+                if (r < 1.0e-9) {
+                     fprintf(fp_poly, " 0.0");
+                     continue;
+                }
                 double shell_volume = 4.0 * M_PI * r * r * dr;
                 
                 double normal_poly = shell_volume * (double)count_poly; 
@@ -657,6 +663,11 @@ void calculate_van_hove_classified(const char *poly_filename, const char *iso_fi
              for (int j = 0; j < NUMBINS; j++) {
                 double r = (j + 0.5) * binsize;
                 double dr = binsize;
+                // Avoid division by zero for r=0
+                if (r < 1.0e-9) {
+                     fprintf(fp_iso, " 0.0");
+                     continue;
+                }
                 double shell_volume = 4.0 * M_PI * r * r * dr;
                 
                 double normal_iso = shell_volume * (double)count_iso;
@@ -713,9 +724,9 @@ void classify_oxygens() {
                         dr[1] = coord[t][j][1] - coord[t][i][1];
                         dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                        df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[0][1]*dr[1] + inv_lattice[0][2]*dr[2];
-                        df[1] = inv_lattice[1][0]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[1][2]*dr[2];
-                        df[2] = inv_lattice[2][0]*dr[0] + inv_lattice[2][1]*dr[1] + inv_lattice[2][2]*dr[2];
+                        df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
+                        df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
+                        df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
 
                         df[0] -= round(df[0]);
                         df[1] -= round(df[1]);
@@ -788,9 +799,11 @@ void classify_na_by_oxygen(const char *na_o_coord_filename) {
                         dr[1] = coord[t][j][1] - coord[t][i][1];
                         dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                        df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[0][1]*dr[1] + inv_lattice[0][2]*dr[2];
-                        df[1] = inv_lattice[1][0]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[1][2]*dr[2];
-                        df[2] = inv_lattice[2][0]*dr[0] + inv_lattice[2][1]*dr[1] + inv_lattice[2][2]*dr[2];
+                        // *** PBC FIX APPLIED HERE ***
+                        // Correct: df = (L_inv)^T * dr
+                        df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
+                        df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
+                        df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
 
                         df[0] -= round(df[0]);
                         df[1] -= round(df[1]);
@@ -815,7 +828,7 @@ void classify_na_by_oxygen(const char *na_o_coord_filename) {
                     na_oxygen_classification[t][na_idx_counter] = closest_o_type;
                     fprintf(fp_na_o, "%d\t%d\t%d\t%d\t%f\n", t, i, closest_o_atom_idx, closest_o_type, sqrt(min_dist_sq));
                 } else {
-                    na_oxygen_classification[t][na_idx_counter] = OXYGEN_TYPE_UNBOUND; // 기본값 (혹은 -1)
+                    na_oxygen_classification[t][na_idx_counter] = OXYGEN_TYPE_UNBOUND; // Default (or -1)
                     fprintf(fp_na_o, "%d\t%d\t-1\t-1\t-1.0\n", t, i);
                 }
                 na_idx_counter++;
@@ -840,7 +853,7 @@ void calculate_msd_classified_ta(const char *msd_poly_filename, const char *msd_
     fprintf(fp_poly, "# MSD for Ta+ (Polymeric)\n# dt (fs)\tMSD (A^2)\tCount\n");
     fprintf(fp_iso, "# MSD for Ta+ (Isolated)\n# dt (fs)\tMSD (A^2)\tCount\n");
 
-    int max_delta_t = numTraj / 3;
+    int max_delta_t = numTraj / 2;
 
     for (int dt = 0; dt < max_delta_t; dt += DELTA_T) {
         if (dt == 0) {
@@ -860,7 +873,7 @@ void calculate_msd_classified_ta(const char *msd_poly_filename, const char *msd_
             for (int i = 0; i < numAtoms[start]; i++) {
                 if (atom[start][i][1] != 2) continue; // Not a Ta atom
 
-                // unwrapped trajectory 가정 (PBC 미적용)
+                // unwrapped trajectory assumed (PBC not applied)
                 double dx = coord[start + dt][i][0] - coord[start][i][0];
                 double dy = coord[start + dt][i][1] - coord[start][i][1];
                 double dz = coord[start + dt][i][2] - coord[start][i][2];
@@ -909,7 +922,7 @@ void calculate_van_hove_na_oxygen(const char *gsrt_nbo_filename, const char *gsr
     fprintf(fp_nbo, "# Gs(r,t) for Na+ (near NBO or UO)\n# Row: dt (fs), Col: r (A) (bin_size=%f A)\n", binsize);
     fprintf(fp_bo, "# Gs(r,t) for Na+ (near BO)\n# Row: dt (fs), Col: r (A) (bin_size=%f A)\n", binsize);
 
-    int max_delta_t = numTraj / 3;
+    int max_delta_t = numTraj / 2;
 
     for (int dt = 0; dt < max_delta_t; dt += DELTA_T) {
         if (dt == 0) continue; 
@@ -927,6 +940,7 @@ void calculate_van_hove_na_oxygen(const char *gsrt_nbo_filename, const char *gsr
             for (int i = 0; i < numAtoms[start]; i++) {
                 if (atom[start][i][1] != 1) continue; 
 
+                // Unwrapped trajectory assumed
                 double dx = coord[start + dt][i][0] - coord[start][i][0];
                 double dy = coord[start + dt][i][1] - coord[start][i][1];
                 double dz = coord[start + dt][i][2] - coord[start][i][2];
@@ -952,6 +966,11 @@ void calculate_van_hove_na_oxygen(const char *gsrt_nbo_filename, const char *gsr
             for (int j = 0; j < NUMBINS; j++) {
                 double r = (j + 0.5) * binsize;
                 double dr = binsize;
+                // Avoid division by zero for r=0
+                if (r < 1.0e-9) {
+                     fprintf(fp_nbo, " 0.0");
+                     continue;
+                }
                 double shell_volume = 4.0 * M_PI * r * r * dr;
                 
                 double normal_nbo = shell_volume * (double)count_nbo; 
@@ -971,6 +990,11 @@ void calculate_van_hove_na_oxygen(const char *gsrt_nbo_filename, const char *gsr
              for (int j = 0; j < NUMBINS; j++) {
                 double r = (j + 0.5) * binsize;
                 double dr = binsize;
+                // Avoid division by zero for r=0
+                if (r < 1.0e-9) {
+                     fprintf(fp_bo, " 0.0");
+                     continue;
+                }
                 double shell_volume = 4.0 * M_PI * r * r * dr;
                 
                 double normal_bo = shell_volume * (double)count_bo;

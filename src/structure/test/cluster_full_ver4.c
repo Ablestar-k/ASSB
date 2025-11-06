@@ -47,10 +47,14 @@ void calculate_van_hove_classified(const char *poly_filename, const char *iso_fi
 int check_for_updates(int n, const int *arr1, const int *arr2);
 void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]);
 
+void analyze_ta_o_coordination(const char *filename);
+void analyze_bridging_linkages(const char *filename);
+void analyze_oxygen_classification(const char *filename);
+
 
 int main(int argc, char *argv[]) {
-    if (argc != 12) {
-        printf("USAGE: %s <input.xyz> <cluster_size.dat> <na_coord.dat> <cluster_dist.dat> <vanHove_poly.dat> <vanHove_iso.dat> <msd_ta_poly.dat> <msd_ta_iso.dat> <na_o_coord.dat> <vanHove_na_nbo.dat> <vanHove_na_bo.dat>\n", argv[0]);
+    if (argc != 15) { 
+        printf("USAGE: %s <input.xyz> <cluster_size.dat> <na_coord.dat> <cluster_dist.dat> <vanHove_poly.dat> <vanHove_iso.dat> <msd_ta_poly.dat> <msd_ta_iso.dat> <na_o_coord.dat> <vanHove_na_nbo.dat> <vanHove_na_bo.dat> <ta_o_coord.dat> <ta_bridge.dat>\n", argv[0]);
         exit(1);
     }
     const char *input_file = argv[1];
@@ -65,6 +69,10 @@ int main(int argc, char *argv[]) {
     const char *na_o_coord_output_file = argv[9];
     const char *vanHove_na_nbo_output_file = argv[10];
     const char *vanHove_na_bo_output_file = argv[11];
+    
+    const char *ta_o_coord_output_file = argv[12];
+    const char *ta_bridge_linkages_output_file = argv[13];
+    const char *o_type_dist_output_file = argv[14];
 
     atom = (int***)malloc(sizeof(int**) * MAXTIMESTEP);
     coord = (double***)malloc(sizeof(double**) * MAXTIMESTEP);
@@ -113,8 +121,12 @@ int main(int argc, char *argv[]) {
 
     classify_na_ions(); 
     classify_oxygens();
+    analyze_oxygen_classification(o_type_dist_output_file);
     classify_na_by_oxygen(na_o_coord_output_file);
  
+    analyze_ta_o_coordination(ta_o_coord_output_file);
+    
+    analyze_bridging_linkages(ta_bridge_linkages_output_file);
 
     analyze_and_write_clusters(cluster_size_output_file, na_coord_output_file, cluster_dist_output_file);
 
@@ -289,8 +301,6 @@ void perform_clustering() {
                     dr[1] = coord[t][j][1] - coord[t][i][1];
                     dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                    // *** PBC FIX APPLIED HERE ***
-                    // Correct: df = (L_inv)^T * dr
                     df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
                     df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
                     df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
@@ -299,7 +309,6 @@ void perform_clustering() {
                     df[1] = df[1] - round(df[1]);
                     df[2] = df[2] - round(df[2]);
 
-                    // Correct: dr_pbc = L^T * df_mic
                     dr_pbc[0] = current_lattice[0][0]*df[0] + current_lattice[1][0]*df[1] + current_lattice[2][0]*df[2];
                     dr_pbc[1] = current_lattice[0][1]*df[0] + current_lattice[1][1]*df[1] + current_lattice[2][1]*df[2];
                     dr_pbc[2] = current_lattice[0][2]*df[0] + current_lattice[1][2]*df[1] + current_lattice[2][2]*df[2];
@@ -378,19 +387,12 @@ void classify_na_ions() {
         for (int c = 0; c <= max_id; c++) {
             if (cluster_size[c] == 0) continue;
 
-            // 1. [TaCl6] Definition
-            int is_TaCl6 = (cluster_Ta_count[c] == 1 &&
-                            cluster_O_count[c] == 0 &&
-                            cluster_Cl_count[c] == 6 &&
-                            cluster_size[c] == 7);
-            
-            // 2. [TaOCl5] Definition
-            int is_TaOCl5 = (cluster_Ta_count[c] == 1 &&
-                             cluster_O_count[c] == 1 &&
-                             cluster_Cl_count[c] == 5 &&
-                             cluster_size[c] == 7);
-            
-             if (is_TaCl6 || is_TaOCl5) {
+            // ISOLATED = cluster size == 6 or 7 && isolated Ta
+            int is_iso = (cluster_Ta_count[c] == 1 &&
+                            cluster_size > 5 &&
+                            cluster_size[c] < 8);
+           
+            if (is_iso) {
                 cluster_type[c] = CLUSTER_TYPE_ISOLATED;
             } else {
                 cluster_type[c] = CLUSTER_TYPE_POLYMERIC;
@@ -417,8 +419,6 @@ void classify_na_ions() {
                     dr[1] = coord[t][j][1] - coord[t][i][1];
                     dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                    // *** PBC FIX APPLIED HERE ***
-                    // Correct: df = (L_inv)^T * dr
                     df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
                     df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
                     df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
@@ -545,8 +545,6 @@ void analyze_and_write_clusters(const char *cluster_size_filename, const char *n
                     dr[1] = coord[t][j][1] - coord[t][i][1];
                     dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                    // *** PBC FIX APPLIED HERE ***
-                    // Correct: df = (L_inv)^T * dr
                     df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
                     df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
                     df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
@@ -731,8 +729,6 @@ void classify_oxygens() {
                         dr[1] = coord[t][j][1] - coord[t][i][1];
                         dr[2] = coord[t][j][2] - coord[t][i][2];
 
-                        // *** PBC FIX APPLIED HERE ***
-                        // Correct: df = (L_inv)^T * dr
                         df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
                         df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
                         df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
@@ -757,7 +753,7 @@ void classify_oxygens() {
                     oxygen_classification[t][o_idx_counter] = OXYGEN_TYPE_BRIDGING;    // 1
                 } else if (ta_neighbor_count == 1) {
                     oxygen_classification[t][o_idx_counter] = OXYGEN_TYPE_NONBRIDGING; // 0
-                } else { // ta_neighbor_count == 0
+                } else if (ta_neighbor_count == 0) {
                     oxygen_classification[t][o_idx_counter] = OXYGEN_TYPE_UNBOUND;     // 2
                 }
                 o_idx_counter++;
@@ -807,9 +803,7 @@ void classify_na_by_oxygen(const char *na_o_coord_filename) {
                         dr[0] = coord[t][j][0] - coord[t][i][0];
                         dr[1] = coord[t][j][1] - coord[t][i][1];
                         dr[2] = coord[t][j][2] - coord[t][i][2];
-
-                        // *** PBC FIX APPLIED HERE ***
-                        // Correct: df = (L_inv)^T * dr
+ 
                         df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
                         df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
                         df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
@@ -1055,4 +1049,228 @@ void invert_matrix_3x3(const double A[3][3], double A_inv[3][3]) {
     A_inv[2][0] = (A[1][0] * A[2][1] - A[2][0] * A[1][1]) * inv_det;
     A_inv[2][1] = (A[2][0] * A[0][1] - A[0][0] * A[2][1]) * inv_det;
     A_inv[2][2] = (A[0][0] * A[1][1] - A[1][0] * A[0][1]) * inv_det;
+}
+
+void analyze_ta_o_coordination(const char *filename) {
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        perror("Error opening Ta-O coordination output file");
+        return;
+    }
+
+    fprintf(fp, "# Timestep\tTa_Atom_Index\tTa_O_Coordination_Number\n");
+
+    const double ta_o_cutoff_sq = TA_O_CUTOFF * TA_O_CUTOFF;
+
+    for (int t = 0; t < numTraj; t++) {
+        if (t % 100 == 0) printf("\t Analyzing Ta-O CN frame t = %d...\n", t);
+
+        int nAtom = numAtoms[t];
+
+        double inv_lattice[3][3];
+        double current_lattice[3][3];
+        for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) current_lattice[i][j] = lattice_vectors[t][i][j];
+        invert_matrix_3x3(current_lattice, inv_lattice);
+
+        for (int i = 0; i < nAtom; i++) {
+            if (atom[t][i][1] != 2) continue; // Skip if not Ta
+
+            int ta_o_cn_count = 0;
+
+            for (int j = 0; j < nAtom; j++) {
+                if (atom[t][j][1] != 3) continue; // Skip if not O
+
+                double dr[3], df[3], dr_pbc[3];
+                dr[0] = coord[t][j][0] - coord[t][i][0];
+                dr[1] = coord[t][j][1] - coord[t][i][1];
+                dr[2] = coord[t][j][2] - coord[t][i][2];
+
+                df[0] = inv_lattice[0][0]*dr[0] + inv_lattice[1][0]*dr[1] + inv_lattice[2][0]*dr[2];
+                df[1] = inv_lattice[0][1]*dr[0] + inv_lattice[1][1]*dr[1] + inv_lattice[2][1]*dr[2];
+                df[2] = inv_lattice[0][2]*dr[0] + inv_lattice[1][2]*dr[1] + inv_lattice[2][2]*dr[2];
+
+                df[0] -= round(df[0]);
+                df[1] -= round(df[1]);
+                df[2] -= round(df[2]);
+
+                dr_pbc[0] = current_lattice[0][0]*df[0] + current_lattice[1][0]*df[1] + current_lattice[2][0]*df[2];
+                dr_pbc[1] = current_lattice[0][1]*df[0] + current_lattice[1][1]*df[1] + current_lattice[2][1]*df[2];
+                dr_pbc[2] = current_lattice[0][2]*df[0] + current_lattice[1][2]*df[1] + current_lattice[2][2]*df[2];
+
+                double distSq = dr_pbc[0]*dr_pbc[0] + dr_pbc[1]*dr_pbc[1] + dr_pbc[2]*dr_pbc[2];
+
+                if (distSq < ta_o_cutoff_sq) {
+                    ta_o_cn_count++;
+                }
+            } // end j (O atom) loop
+
+            fprintf(fp, "%d\t%d\t%d\n", t, i, ta_o_cn_count);
+        } // end i (Ta atom) loop
+    } // end t (timestep) loop
+
+    fclose(fp);
+}
+
+void analyze_bridging_linkages(const char *filename) {
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        perror("Error opening Ta bridging linkages output file");
+        return;
+    }
+
+    fprintf(fp, "# Timestep\tTa_Atom_Index\tTa_O_Ta_Bridges\tTa_Cl_Ta_Bridges\tTa_Classification(0=Poly,1=Iso)\n");
+
+    const double ta_o_cutoff_sq = TA_O_CUTOFF * TA_O_CUTOFF;
+    const double ta_cl_cutoff_sq = TA_CL_CUTOFF * TA_CL_CUTOFF;
+
+    for (int t = 0; t < numTraj; t++) {
+        if (t % 100 == 0) printf("\t Analyzing Ta-Bridging frame t = %d...\n", t);
+
+        int nAtom = numAtoms[t];
+
+        double inv_lattice[3][3];
+        double current_lattice[3][3];
+        for (int i = 0; i < 3; ++i) for (int j = 0; j < 3; ++j) current_lattice[i][j] = lattice_vectors[t][i][j];
+        invert_matrix_3x3(current_lattice, inv_lattice);
+
+        int *global_to_o_idx = (int *)malloc(sizeof(int) * nAtom);
+        if (!global_to_o_idx) {
+            fprintf(stderr, "Error: Failed to allocate global_to_o_idx map (t=%d)\n", t);
+            continue;
+        }
+        int o_count = 0;
+        for (int i = 0; i < nAtom; i++) {
+            if (atom[t][i][1] == 3) {
+                global_to_o_idx[i] = o_count++;
+            } else {
+                global_to_o_idx[i] = -1;
+            }
+        }
+
+        int ta_idx_counter = 0;
+        for (int i = 0; i < nAtom; i++) {
+            if (atom[t][i][1] != 2) continue; // Skip if not Ta
+
+            int ta_type = ta_classification[t][ta_idx_counter];
+            int ta_o_ta_bridges = 0;
+            int ta_cl_ta_bridges = 0;
+
+            if (ta_type == CLUSTER_TYPE_POLYMERIC) {
+                
+                // Loop over all other atoms (j)
+                for (int j = 0; j < nAtom; j++) {
+                    int type_j = atom[t][j][1];
+
+                    // --- 1. Check for Ta-O-Ta bridges ---
+                    if (type_j == 3) { // j is Oxygen
+                        double dr_ij[3], df_ij[3], dr_pbc_ij[3];
+                        dr_ij[0] = coord[t][j][0] - coord[t][i][0];
+                        dr_ij[1] = coord[t][j][1] - coord[t][i][1];
+                        dr_ij[2] = coord[t][j][2] - coord[t][i][2];
+                        df_ij[0] = inv_lattice[0][0]*dr_ij[0] + inv_lattice[1][0]*dr_ij[1] + inv_lattice[2][0]*dr_ij[2];
+                        df_ij[1] = inv_lattice[0][1]*dr_ij[0] + inv_lattice[1][1]*dr_ij[1] + inv_lattice[2][1]*dr_ij[2];
+                        df_ij[2] = inv_lattice[0][2]*dr_ij[0] + inv_lattice[1][2]*dr_ij[1] + inv_lattice[2][2]*dr_ij[2];
+                        df_ij[0] -= round(df_ij[0]); df_ij[1] -= round(df_ij[1]); df_ij[2] -= round(df_ij[2]);
+                        dr_pbc_ij[0] = current_lattice[0][0]*df_ij[0] + current_lattice[1][0]*df_ij[1] + current_lattice[2][0]*df_ij[2];
+                        dr_pbc_ij[1] = current_lattice[0][1]*df_ij[0] + current_lattice[1][1]*df_ij[1] + current_lattice[2][1]*df_ij[2];
+                        dr_pbc_ij[2] = current_lattice[0][2]*df_ij[0] + current_lattice[1][2]*df_ij[1] + current_lattice[2][2]*df_ij[2];
+                        double distSq_ij = dr_pbc_ij[0]*dr_pbc_ij[0] + dr_pbc_ij[1]*dr_pbc_ij[1] + dr_pbc_ij[2]*dr_pbc_ij[2];
+
+                        if (distSq_ij < ta_o_cutoff_sq) {
+                            int o_idx = global_to_o_idx[j];
+                            if (oxygen_classification[t][o_idx] == OXYGEN_TYPE_BRIDGING) {
+                                ta_o_ta_bridges++;
+                            }
+                        }
+                    } 
+                    // --- 2. Check for Ta-Cl-Ta bridges ---
+                    else if (type_j == 4) { // j is Chlorine
+                        double dr_ij[3], df_ij[3], dr_pbc_ij[3];
+                        dr_ij[0] = coord[t][j][0] - coord[t][i][0];
+                        dr_ij[1] = coord[t][j][1] - coord[t][i][1];
+                        dr_ij[2] = coord[t][j][2] - coord[t][i][2];
+                        df_ij[0] = inv_lattice[0][0]*dr_ij[0] + inv_lattice[1][0]*dr_ij[1] + inv_lattice[2][0]*dr_ij[2];
+                        df_ij[1] = inv_lattice[0][1]*dr_ij[0] + inv_lattice[1][1]*dr_ij[1] + inv_lattice[2][1]*dr_ij[2];
+                        df_ij[2] = inv_lattice[0][2]*dr_ij[0] + inv_lattice[1][2]*dr_ij[1] + inv_lattice[2][2]*dr_ij[2];
+
+                        df_ij[0] -= round(df_ij[0]); df_ij[1] -= round(df_ij[1]); df_ij[2] -= round(df_ij[2]);
+
+                        dr_pbc_ij[0] = current_lattice[0][0]*df_ij[0] + current_lattice[1][0]*df_ij[1] + current_lattice[2][0]*df_ij[2];
+                        dr_pbc_ij[1] = current_lattice[0][1]*df_ij[0] + current_lattice[1][1]*df_ij[1] + current_lattice[2][1]*df_ij[2];
+                        dr_pbc_ij[2] = current_lattice[0][2]*df_ij[0] + current_lattice[1][2]*df_ij[1] + current_lattice[2][2]*df_ij[2];
+                        double distSq_ij = dr_pbc_ij[0]*dr_pbc_ij[0] + dr_pbc_ij[1]*dr_pbc_ij[1] + dr_pbc_ij[2]*dr_pbc_ij[2];
+
+                        if (distSq_ij < ta_cl_cutoff_sq) {
+                            int is_cl_bridged = 0;
+                            for (int k = 0; k < nAtom; k++) {
+                                if (k == i) continue; 
+                                if (atom[t][k][1] != 2) continue; 
+
+                                double dr_jk[3], df_jk[3], dr_pbc_jk[3];
+                                dr_jk[0] = coord[t][k][0] - coord[t][j][0];
+                                dr_jk[1] = coord[t][k][1] - coord[t][j][1];
+                                dr_jk[2] = coord[t][k][2] - coord[t][j][2];
+                                df_jk[0] = inv_lattice[0][0]*dr_jk[0] + inv_lattice[1][0]*dr_jk[1] + inv_lattice[2][0]*dr_jk[2];
+                                df_jk[1] = inv_lattice[0][1]*dr_jk[0] + inv_lattice[1][1]*dr_jk[1] + inv_lattice[2][1]*dr_jk[2];
+                                df_jk[2] = inv_lattice[0][2]*dr_jk[0] + inv_lattice[1][2]*dr_jk[1] + inv_lattice[2][2]*dr_jk[2];
+
+                                df_jk[0] -= round(df_jk[0]); df_jk[1] -= round(df_jk[1]); df_jk[2] -= round(df_jk[2]);
+
+                                dr_pbc_jk[0] = current_lattice[0][0]*df_jk[0] + current_lattice[1][0]*df_jk[1] + current_lattice[2][0]*df_jk[2];
+                                dr_pbc_jk[1] = current_lattice[0][1]*df_jk[0] + current_lattice[1][1]*df_jk[1] + current_lattice[2][1]*df_jk[2];
+                                dr_pbc_jk[2] = current_lattice[0][2]*df_jk[0] + current_lattice[1][2]*df_jk[1] + current_lattice[2][2]*df_jk[2];
+                                double distSq_jk = dr_pbc_jk[0]*dr_pbc_jk[0] + dr_pbc_jk[1]*dr_pbc_jk[1] + dr_pbc_jk[2]*dr_pbc_jk[2];
+
+                                if (distSq_jk < ta_cl_cutoff_sq) {
+                                    is_cl_bridged = 1;
+                                    break; 
+                                }
+                            } // end k (other Ta) loop
+                            if (is_cl_bridged) {
+                                ta_cl_ta_bridges++;
+                            }
+                        } // if (distSq_ij < ta_cl_cutoff_sq)
+                    } // else if (type_j == 4)
+                } // end j (all atoms) loop
+
+                // Polymeric case
+                fprintf(fp, "%d\t%d\t%d\t%d\t%d\n", t, i, ta_o_ta_bridges, ta_cl_ta_bridges, ta_type);
+
+            } else {
+                // Isolated case
+                fprintf(fp, "%d\t%d\t0\t0\t%d\n", t, i, ta_type);
+            }
+
+            ta_idx_counter++; // Increment for every Ta atom processed
+        } // end i (Ta atom) loop
+
+        free(global_to_o_idx);
+    } // end t (timestep) loop
+
+    fclose(fp);
+}
+
+void analyze_oxygen_classification(const char *filename) {
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        perror("Error opening oxygen classification output file");
+        return;
+    }
+    fprintf(fp, "# Timestep\tOxygen_Global_Index\tOxygen_Local_Index\tOxygen_Type(0=NBO, 1=BO, 2=UO)\n");
+
+    printf("\tAnalyzing and writing Oxygen Classification distribution...\n");
+    for (int t = 0; t < numTraj; t++) {
+        if (t % 100 == 0) printf("\t Writing O-Type frame t = %d...\n", t);
+        int nAtom = numAtoms[t];
+        int o_idx_counter = 0;
+        for (int i = 0; i < nAtom; i++) {
+            if (atom[t][i][1] == 3) { // Is Oxygen
+                int o_type = oxygen_classification[t][o_idx_counter];
+                // (t, Global Atom ID, Local O-only ID, O-Type)
+                fprintf(fp, "%d\t%d\t%d\t%d\n", t, i, o_idx_counter, o_type);
+                o_idx_counter++;
+            }
+        }
+    }
+    fclose(fp);
 }

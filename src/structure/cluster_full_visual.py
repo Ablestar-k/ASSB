@@ -4,10 +4,14 @@ import matplotlib.pyplot as plt
 import os
 import matplotlib.colors as mcolors
 
-# --- 0. Global Settings ---
 MAX_R = 10.0
-NUMBINS = 1000  
-TRAJ_INTERVAL_PS = 2.0  
+try:
+    NUMBINS = 1000
+except ValueError:
+    print("Warning: NUMBINS 1000  has unusual characters. Defaulting to 1000.")
+    NUMBINS = 1000
+    
+TRAJ_INTERVAL_PS = 2.0
 
 ENSEMBLE_START = 1
 ENSEMBLE_END = 5
@@ -18,17 +22,21 @@ BASE_PATH = '../../result/structure/'
 if not os.path.exists(BASE_PATH):
     print(f"Warning: Directory {BASE_PATH} does not exist. Script may fail.")
 
-# Target times in (ps) to plot for 1D Gs(r,t)
-TARGET_TIMES_PS = [4,40,400,1000,2000,4000]
+# For Gs(r,t)
+TARGET_TIMES_PS = [100] # in ps
 
-# (These must match the files output by the C code, e.g., "1_cluster_dist.dat")
-CLUSTER_DIST_PREFIX = "cluster_dist_ver2"
-NA_POLY_GSRT_PREFIX = "vhf_poly_ver2"  
-NA_ISO_GSRT_PREFIX  = "vhf_iso_ver2"   
-TA_POLY_MSD_PREFIX  = "msd_ta_poly_ver2"   
-TA_ISO_MSD_PREFIX   = "msd_ta_iso_ver2"    
-NA_NBO_GSRT_PREFIX  = "vanHove_na_nbo_ver2" 
-NA_BO_GSRT_PREFIX   = "vanHove_na_bo_ver2"  
+VERSION = "4"
+
+CLUSTER_DIST_PREFIX = f"cluster_dist_ver{VERSION}"
+NA_POLY_GSRT_PREFIX = f"vhf_poly_ver{VERSION}"
+NA_ISO_GSRT_PREFIX  = f"vhf_iso_ver{VERSION}"
+TA_POLY_MSD_PREFIX  = f"msd_ta_poly_ver{VERSION}"
+TA_ISO_MSD_PREFIX   = f"msd_ta_iso_ver{VERSION}"
+NA_NBO_GSRT_PREFIX  = f"vhf_na_nbo_ver{VERSION}" 
+NA_BO_GSRT_PREFIX   = f"vhf_na_bo_ver{VERSION}"  
+TA_O_COORD_PREFIX   = f"ta_o_coord_ver{VERSION}"
+TA_BRIDGE_PREFIX    = f"ta_bridge_ver{VERSION}"
+O_TYPE_DIST_PREFIX  = f"o_type_dist_ver{VERSION}"
 
 
 # --- 1. Cluster Size Distribution ---
@@ -92,13 +100,8 @@ def process_and_plot_ensemble_cluster_dist(ensemble_range, base_path):
     plt.close()
 
 
-# --- 2. (### NEW FUNCTION ###) Ensemble Average MSD ---
+# --- 2. Ensemble Average MSD ---
 def process_and_average_msd(ensemble_range, base_path, file_prefix, num_ensembles):
-    """
-    Reads all ensemble MSD data, calculates the average and Standard Error of the Mean (SEM),
-    and saves them. Handles files with different time lengths by truncating to the
-    shortest common length.
-    """
     print(f"--- 2. Processing Ensemble MSD ({file_prefix}) ---")
     raw_data_list = []
     min_common_length = -1
@@ -178,7 +181,7 @@ def process_and_average_msd(ensemble_range, base_path, file_prefix, num_ensemble
     return {'avg': avg_output_file, 'sem': sem_output_file}
 
 
-# --- 3. (### NEW FUNCTION ###) Plot Combined MSD ---
+# --- 3. Plot Combined MSD ---
 def plot_combined_msd(poly_files, iso_files, output_filename, traj_interval_ps):
     """
     Plots the averaged Polymeric and Isolated MSD data on two graphs:
@@ -224,14 +227,14 @@ def plot_combined_msd(poly_files, iso_files, output_filename, traj_interval_ps):
     plt.figure(figsize=(10, 7))
     
     # Plot Poly
-    plt.plot(t_ps, poly_msd_avg, label='Ta (Polymeric)', color='blue', linewidth=2)
+    plt.plot(t_ps, poly_msd_avg, label='Ta (Polymeric)', color='blue', linewidth=2, marker='none')
     plt.fill_between(t_ps, 
                      poly_msd_avg - poly_msd_sem, 
                      poly_msd_avg + poly_msd_sem, 
                      color='blue', alpha=0.2)
                      
     # Plot Iso
-    plt.plot(t_ps, iso_msd_avg, label='Ta (Isolated)', color='red', linewidth=2)
+    plt.plot(t_ps, iso_msd_avg, label='Ta (Isolated)', color='red', linewidth=2, marker='none')
     plt.fill_between(t_ps, 
                      iso_msd_avg - iso_msd_sem, 
                      iso_msd_avg + iso_msd_sem, 
@@ -282,17 +285,276 @@ def plot_combined_msd(poly_files, iso_files, output_filename, traj_interval_ps):
     plt.close()
 
 
-# --- 4. Ensemble Average Gs(r,t) ---
+# --- 4. Ta-O Coordination Number Distribution ---
+def process_and_plot_ta_o_coord(ensemble_range, base_path):
+    """
+    Loads all Ta-O coordination data, concatenates, and plots the
+    overall distribution as a bar chart.
+    """
+    print("--- 4. Processing Ensemble Ta-O Coordination ---")
+    all_ta_coord_data = []
+    
+    for i in ensemble_range:
+        filename = os.path.join(base_path, f'{i}_{TA_O_COORD_PREFIX}.dat')
+        if not os.path.exists(filename):
+            print(f"  File not found (skipping): {filename}")
+            continue
+            
+        try:
+            data = pd.read_csv(filename, sep='\s+', comment='#',
+                               names=['Timestep', 'Ta_Atom_Index', 'Ta_O_Coordination_Number'])
+            if not data.empty:
+                all_ta_coord_data.append(data)
+                print(f"  Load success: {filename} ({len(data)} data points)")
+            else:
+                print(f"  File empty: {filename}")
+        except Exception as e:
+            print(f"  File read error {filename}: {e}")
+
+    if not all_ta_coord_data:
+        print("--- 4. Ta-O Coordination processing failed: No data loaded ---\n")
+        return
+
+    full_ensemble_data = pd.concat(all_ta_coord_data, ignore_index=True)
+    coord_counts = full_ensemble_data['Ta_O_Coordination_Number']
+    
+    print(f"  Total {len(coord_counts)} Ta-atom observations (all ensembles, all timesteps).")
+    
+    # Calculate normalized counts for the bar plot
+    cn_distribution = coord_counts.value_counts(normalize=True).sort_index()
+    
+    plt.figure(figsize=(10, 7))
+    bars = plt.bar(cn_distribution.index, cn_distribution.values, 
+                   edgecolor='black', alpha=0.8, color='c')
+    
+    plt.title(f'Ensemble Ta-O Coordination Distribution (N={NUM_ENSEMBLES}, All Timesteps)', fontsize=16)
+    plt.xlabel('Ta-O Coordination Number (CN)', fontsize=14)
+    plt.ylabel('Probability (Normalized Frequency)', fontsize=14)
+    # X축 눈금을 정수로 강제
+    if not cn_distribution.empty:
+        plt.xticks(range(int(cn_distribution.index.min()), int(cn_distribution.index.max()) + 1))
+    
+    plt.grid(True, axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
+    
+    # Add percentage labels on top of bars
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.005,
+                 f'{yval*100:.1f}%', ha='center', va='bottom')
+
+    output_filename = 'ensemble_ta_o_coord_distribution.png'
+    output_filename = os.path.join(base_path, output_filename)
+    plt.tight_layout()
+    plt.savefig(output_filename)
+    print(f"  Success! Ensemble Ta-O CN plot saved: {output_filename}")
+    print("--- 4. Ta-O Coordination processing complete ---\n")
+    plt.close()
+
+
+# --- 5. Ta Bridging Analysis (Polymeric Ta) ---
+def process_and_plot_ta_bridging(ensemble_range, base_path):
+    """
+    Loads all Ta bridging data, focusing on Polymeric Ta atoms.
+    Plots 1D histograms of Ta-O-Ta and Ta-Cl-Ta bridge counts.
+    Plots a 2D histogram correlating O-bridges vs. Cl-bridges.
+    """
+    print("--- 5. Processing Ensemble Ta Bridging ---")
+    all_ta_bridge_data = []
+    
+    for i in ensemble_range:
+        filename = os.path.join(base_path, f'{i}_{TA_BRIDGE_PREFIX}.dat')
+        if not os.path.exists(filename):
+            print(f"  File not found (skipping): {filename}")
+            continue
+            
+        try:
+            data = pd.read_csv(filename, sep='\s+', comment='#',
+                               names=['Timestep', 'Ta_Atom_Index', 'Ta_O_Ta_Bridges', 
+                                      'Ta_Cl_Ta_Bridges', 'Ta_Classification'])
+            if not data.empty:
+                all_ta_bridge_data.append(data)
+                print(f"  Load success: {filename} ({len(data)} data points)")
+            else:
+                print(f"  File empty: {filename}")
+        except Exception as e:
+            print(f"  File read error {filename}: {e}")
+
+    if not all_ta_bridge_data:
+        print("--- 5. Ta Bridging processing failed: No data loaded ---\n")
+        return
+
+    full_data = pd.concat(all_ta_bridge_data, ignore_index=True)
+    
+    # Filter for POLYMERIC Ta atoms only (Classification == 0)
+    poly_data = full_data[full_data['Ta_Classification'] == 0].copy()
+    
+    if poly_data.empty:
+        print("  Warning: No Polymeric Ta atoms (Classification 0) found in data. Skipping plots.")
+        print("--- 5. Ta Bridging processing complete (no data) ---\n")
+        return
+        
+    print(f"  Analyzing {len(poly_data)} Polymeric Ta-atom observations...")
+
+    # --- Plot 1: 1D Histograms ---
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    fig.suptitle(f'Ensemble Bridge Counts for Polymeric Ta (N={NUM_ENSEMBLES}, All Timesteps)', fontsize=16)
+
+    # Plot Ta-O-Ta Bridges
+    o_bridges = poly_data['Ta_O_Ta_Bridges']
+    o_dist = o_bridges.value_counts(normalize=True).sort_index()
+    if not o_dist.empty:
+        ax1.bar(o_dist.index, o_dist.values, edgecolor='black', alpha=0.8, color='royalblue')
+        ax1.set_xticks(range(int(o_dist.index.min()), int(o_dist.index.max()) + 1))
+    ax1.set_title('Ta-O-Ta Bridges', fontsize=14)
+    ax1.set_xlabel('Count of Ta-O-Ta Bridges per Ta', fontsize=12)
+    ax1.set_ylabel('Probability (Normalized Frequency)', fontsize=12)
+    ax1.grid(True, axis='y', linestyle='--', alpha=0.6)
+
+    # Plot Ta-Cl-Ta Bridges
+    cl_bridges = poly_data['Ta_Cl_Ta_Bridges']
+    cl_dist = cl_bridges.value_counts(normalize=True).sort_index()
+    if not cl_dist.empty:
+        ax2.bar(cl_dist.index, cl_dist.values, edgecolor='black', alpha=0.8, color='seagreen')
+        ax2.set_xticks(range(int(cl_dist.index.min()), int(cl_dist.index.max()) + 1))
+    ax2.set_title('Ta-Cl-Ta Bridges', fontsize=14)
+    ax2.set_xlabel('Count of Ta-Cl-Ta Bridges per Ta', fontsize=12)
+    ax2.set_ylabel('Probability (Normalized Frequency)', fontsize=12)
+    ax2.grid(True, axis='y', linestyle='--', alpha=0.6)
+    
+    output_filename_1d = 'ensemble_ta_bridge_1d_hists.png'
+    output_filename_1d = os.path.join(base_path, output_filename_1d)
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.savefig(output_filename_1d)
+    print(f"  Success! Ensemble 1D Bridge Histograms saved: {output_filename_1d}")
+    plt.close(fig)
+
+    # --- Plot 2: 2D Correlation Heatmap ---
+    plt.figure(figsize=(10, 8))
+    
+    x_data = poly_data['Ta_Cl_Ta_Bridges']
+    y_data = poly_data['Ta_O_Ta_Bridges']
+    
+    if x_data.empty or y_data.empty:
+        print("  Warning: No data for 2D Bridge Correlation plot. Skipping.")
+        plt.close()
+        return
+
+    max_x = int(x_data.max())
+    max_y = int(y_data.max())
+    
+    bins_x = np.arange(-0.5, max_x + 1.5, 1)
+    bins_y = np.arange(-0.5, max_y + 1.5, 1)
+    
+    h, xedges, yedges, img = plt.hist2d(
+        x_data, y_data, 
+        bins=[bins_x, bins_y],
+        cmap='viridis', 
+        norm=mcolors.LogNorm() 
+    )
+    
+    plt.colorbar(img, label='Observation Count (Log Scale)')
+    plt.title(f'Correlation of O vs. Cl Bridges for Polymeric Ta (N={NUM_ENSEMBLES})', fontsize=16)
+    plt.xlabel('Ta-Cl-Ta Bridges', fontsize=14)
+    plt.ylabel('Ta-O-Ta Bridges', fontsize=14)
+    
+    plt.xticks(np.arange(0, max_x + 1, 1))
+    plt.yticks(np.arange(0, max_y + 1, 1))
+    
+    output_filename_2d = 'ensemble_ta_bridge_2d_correlation.png'
+    output_filename_2d = os.path.join(base_path, output_filename_2d)
+    plt.tight_layout()
+    plt.savefig(output_filename_2d)
+    print(f"  Success! Ensemble 2D Bridge Correlation plot saved: {output_filename_2d}")
+    print("--- 5. Ta Bridging processing complete ---\n")
+    plt.close()
+
+
+# --- 6. (### NEW FUNCTION ###) Oxygen Type Distribution (NBO/BO/UO) ---
+def process_and_plot_oxygen_types(ensemble_range, base_path):
+    """
+    Loads all Oxygen Type classification data, concatenates, and plots the
+    overall distribution (NBO/BO/UO) as a bar chart.
+    """
+    print("--- 6. Processing Ensemble Oxygen Type Distribution (NBO/BO/UO) ---")
+    all_o_type_data = []
+    
+    for i in ensemble_range:
+        filename = os.path.join(base_path, f'{i}_{O_TYPE_DIST_PREFIX}.dat')
+        if not os.path.exists(filename):
+            print(f"  File not found (skipping): {filename}")
+            continue
+            
+        try:
+            # C-code Format: Timestep, O_Global_Idx, O_Local_Idx, O_Type
+            data = pd.read_csv(filename, sep='\s+', comment='#',
+                               names=['Timestep', 'O_Global_Idx', 'O_Local_Idx', 'O_Type'])
+            if not data.empty:
+                all_o_type_data.append(data)
+                print(f"  Load success: {filename} ({len(data)} data points)")
+            else:
+                print(f"  File empty: {filename}")
+        except Exception as e:
+            print(f"  File read error {filename}: {e}")
+
+    if not all_o_type_data:
+        print("--- 6. Oxygen Type processing failed: No data loaded ---\n")
+        return
+
+    full_data = pd.concat(all_o_type_data, ignore_index=True)
+    o_type_counts = full_data['O_Type']
+    
+    print(f"  Total {len(o_type_counts)} Oxygen-atom observations (all ensembles, all timesteps).")
+    
+    # Calculate normalized counts for the bar plot
+    # C-Code Defines: 0=NBO, 1=BO, 2=UO
+    type_distribution = o_type_counts.value_counts(normalize=True).sort_index()
+    
+    # Define labels for the types
+    type_labels = {
+        0: 'NBO\n(1-Coord)',
+        1: 'BO\n(2+-Coord)',
+        2: 'UO\n(0-Coord)'
+    }
+    # Map index to labels, drop any types not found
+    plot_labels = type_distribution.index.map(lambda x: type_labels.get(x, f'Unknown ({x})'))
+    
+    plt.figure(figsize=(10, 7))
+    # Assign specific colors
+    colors = ['tomato' if 'NBO' in l else 'forestgreen' if 'BO' in l else 'skyblue' for l in plot_labels]
+    
+    bars = plt.bar(plot_labels, type_distribution.values, 
+                   edgecolor='black', alpha=0.8, color=colors)
+    
+    plt.title(f'Ensemble Oxygen Type Distribution (N={NUM_ENSEMBLES}, All Timesteps)', fontsize=16)
+    plt.xlabel('Oxygen Type (Coordination to Ta)', fontsize=14)
+    plt.ylabel('Probability (Normalized Frequency)', fontsize=14)
+    plt.grid(True, axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
+    
+    # Add percentage labels
+    for bar in bars:
+        yval = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2.0, yval + 0.005,
+                 f'{yval*100:.1f}%', ha='center', va='bottom', fontsize=12)
+
+    output_filename = 'ensemble_oxygen_type_distribution.png'
+    output_filename = os.path.join(base_path, output_filename)
+    plt.tight_layout()
+    plt.savefig(output_filename)
+    print(f"  Success! Ensemble Oxygen Type plot saved: {output_filename}")
+    print("--- 6. Oxygen Type processing complete ---\n")
+    plt.close()
+
+
+# --- 7. Ensemble Average Gs(r,t) ---
 def process_and_average_van_hove(ensemble_range, base_path, file_prefix, num_ensembles):
     """
     Reads all ensemble Van Hove data, calculates average and SEM, and saves them.
-    Handles files with different time lengths by truncating.
     (This is a generic function for any Gs(r,t) data)
     """
-    print(f"--- 4. Processing Ensemble Gs(r,t) ({file_prefix}) ---")
+    print(f"--- 7. Processing Ensemble Gs(r,t) ({file_prefix}) ---")
     ensemble_data_list = []
     t_values_frames = None
-    min_common_length = -1 # Track common length
+    min_common_length = -1 
     
     raw_data_list = []  
     
@@ -318,7 +580,7 @@ def process_and_average_van_hove(ensemble_range, base_path, file_prefix, num_ens
             print(f"  File read error {filename}: {e}")
 
     if len(raw_data_list) == 0:
-        print(f"--- 4. Gs(r,t) processing failed: No data loaded ({file_prefix}) ---")
+        print(f"--- 7. Gs(r,t) processing failed: No data loaded ({file_prefix}) ---")
         return None
     elif len(raw_data_list) != num_ensembles:
         print(f"  Warning: Requested {num_ensembles} ensembles, but {len(raw_data_list)} were loaded.")
@@ -347,7 +609,7 @@ def process_and_average_van_hove(ensemble_range, base_path, file_prefix, num_ens
             ensemble_data_list.append(gs_data)
             
     if min_common_length == -1 or min_common_length == 0:
-         print(f"--- 4. Gs(r,t) processing failed: No common time axis found ({file_prefix}) ---")
+         print(f"--- 7. Gs(r,t) processing failed: No common time axis found ({file_prefix}) ---")
          return None
 
     print(f"  All ensembles will be truncated to common length {min_common_length} (dt = {t_values_frames[min_common_length-1]}) for averaging.")
@@ -382,12 +644,12 @@ def process_and_average_van_hove(ensemble_range, base_path, file_prefix, num_ens
 
     print(f"  Success! Ensemble average saved: {avg_output_file}")
     print(f"  Success! Ensemble SEM saved: {sem_output_file}")
-    print(f"--- 4. Gs(r,t) processing complete ({file_prefix}) ---\n")
+    print(f"--- 7. Gs(r,t) processing complete ({file_prefix}) ---\n")
     
     return {'avg': avg_output_file, 'sem': sem_output_file}
 
 
-# --- 5. Plot Individual Gs(r,t) (2D Map + 1D Lines) ---
+# --- 8. Plot Individual Gs(r,t) (2D Map + 1D Lines) ---
 def plot_individual_van_hove(data_files, plot_title, output_prefix, 
                              times_to_plot_ps, traj_interval_ps, max_r, num_bins_from_c):
     """
@@ -395,11 +657,11 @@ def plot_individual_van_hove(data_files, plot_title, output_prefix,
     1. A 2D heatmap of Gs(r,t) vs. r and t.
     2. A 1D line plot of Gs(r,t) vs. r at specific times, with error bars.
     """
-    print(f"--- 5. Plotting Individual Ensemble Gs(r,t) ({output_prefix}) ---")
+    print(f"--- 8. Plotting Individual Ensemble Gs(r,t) ({output_prefix}) ---")
     
     if not data_files:
         print(f"  Error: No data files provided. Skipping plot.")
-        print("--- 5. Individual Gs(r,t) Plotting Failed ---\n")
+        print("--- 8. Individual Gs(r,t) Plotting Failed ---\n")
         return
         
     avg_filename = data_files['avg']
@@ -407,7 +669,7 @@ def plot_individual_van_hove(data_files, plot_title, output_prefix,
 
     if not os.path.exists(avg_filename) or not os.path.exists(sem_filename):
         print(f"  Error: {avg_filename} or {sem_filename} not found. Skipping plot.")
-        print("--- 5. Individual Gs(r,t) Plotting Failed ---\n")
+        print("--- 8. Individual Gs(r,t) Plotting Failed ---\n")
         return
 
     try:
@@ -494,7 +756,7 @@ def plot_individual_van_hove(data_files, plot_title, output_prefix,
         color = colors[i]
         print(f"    - Index {idx}: {t_frame} frames / {t_ps:.2f} ps")
         
-        plt.plot(r_values, gs_at_t_avg, label=f'dt = {t_ps:.1f} ps', color=color, linewidth=2)
+        plt.plot(r_values, gs_at_t_avg, label=f'dt = {t_ps:.1f} ps', color=color, linewidth=2, marker='none')
         plt.fill_between(r_values, 
                          gs_at_t_avg - gs_at_t_sem, 
                          gs_at_t_avg + gs_at_t_sem, 
@@ -506,7 +768,6 @@ def plot_individual_van_hove(data_files, plot_title, output_prefix,
     plt.legend()
     plt.ylim(bottom=0)
     plt.xlim(0, 10.0)
-    plt.grid(True, linestyle='--', alpha=0.6)
 
     output_filename_1d = f'ensemble_avg_{output_prefix}_1d_lines_with_error.png'
     output_filename_1d = os.path.join(BASE_PATH, output_filename_1d)
@@ -516,17 +777,17 @@ def plot_individual_van_hove(data_files, plot_title, output_prefix,
     plt.close()
 
 
-# --- 6. Plot Combined Gs(r,t) - Version 1 (4*pi*r^2, Log Scale) ---
+# --- 9. Plot Combined Gs(r,t) - Version 1 (4*pi*r^2, Log Scale) ---
 def plot_combined_1d_gsrt_4pir2_log(data_files_1, data_files_2, 
-                                    label_1, label_2, 
-                                    plot_title_suffix, output_filename, 
-                                    times_to_plot_ps, traj_interval_ps, max_r, num_bins_from_c,
-                                    cmap_name_1='Blues', cmap_name_2='Reds'):
+                                  label_1, label_2, 
+                                  plot_title_suffix, output_filename, 
+                                  times_to_plot_ps, traj_interval_ps, max_r, num_bins_from_c,
+                                  cmap_name_1='Blues', cmap_name_2='Reds'):
     """
     Combines two Gs(r,t) datasets onto a single 1D plot.
     Y-axis is 4*pi*r^2 * Gs(r,t) on a LOG scale.
     """
-    print(f"--- 6. Plotting Combined Gs(r,t) [4*pi*r^2, Log] ({plot_title_suffix}) ---")
+    print(f"--- 9. Plotting Combined Gs(r,t) [4*pi*r^2, Log] ({plot_title_suffix}) ---")
     
     # --- Load Data 1 ---
     try:
@@ -602,8 +863,8 @@ def plot_combined_1d_gsrt_4pir2_log(data_files_1, data_files_2,
         y_sem_1 = four_pi_r_sq * gs_sem_1  
         
         plt.plot(r_values, y_avg_1, 
-                 label=f'{label_1} (dt = {t_ps:.1f} ps)', 
-                 color=color_1_current, linestyle='-', linewidth=2)
+               label=f'{label_1} (dt = {t_ps:.1f} ps)', 
+               color=color_1_current, linestyle='-', linewidth=2, marker='none')
         plt.fill_between(r_values, 
                          y_avg_1 - y_sem_1, 
                          y_avg_1 + y_sem_1, 
@@ -616,8 +877,8 @@ def plot_combined_1d_gsrt_4pir2_log(data_files_1, data_files_2,
         y_sem_2 = four_pi_r_sq * gs_sem_2  
         
         plt.plot(r_values, y_avg_2, 
-                 label=f'{label_2} (dt = {t_ps:.1f} ps)', 
-                 color=color_2_current, linestyle='-', linewidth=2)
+               label=f'{label_2} (dt = {t_ps:.1f} ps)', 
+               color=color_2_current, linestyle='-', linewidth=2, marker='none')
         plt.fill_between(r_values, 
                          y_avg_2 - y_sem_2, 
                          y_avg_2 + y_sem_2, 
@@ -636,9 +897,9 @@ def plot_combined_1d_gsrt_4pir2_log(data_files_1, data_files_2,
     if all_positive_y_values:
         min_y = np.min(all_positive_y_values) / 10.0
         max_y = np.max(all_positive_y_values) * 10.0
-        plt.ylim(max(1e-5, min_y), max_y)
+        plt.ylim(max(1e-3, min_y), max_y)
     else:
-        plt.ylim(1e-5, 1) # Default fallback
+        plt.ylim(1e-3, 1) # Default fallback
 
     plt.legend(ncol=2, fontsize=16) 
     plt.tick_params(axis='both', which='major', labelsize=14) 
@@ -649,17 +910,17 @@ def plot_combined_1d_gsrt_4pir2_log(data_files_1, data_files_2,
     plt.close()
 
 
-# --- 7. (### NEW FUNCTION ###) Plot Combined Gs(r,t) - Version 2 (Original, Linear Scale) ---
+# --- 10. (### NEW FUNCTION ###) Plot Combined Gs(r,t) - Version 2 (Original, Linear Scale) ---
 def plot_combined_1d_gsrt_original(data_files_1, data_files_2, 
-                                   label_1, label_2, 
-                                   plot_title_suffix, output_filename, 
-                                   times_to_plot_ps, traj_interval_ps, max_r, num_bins_from_c,
-                                   cmap_name_1='Blues', cmap_name_2='Reds'):
+                                  label_1, label_2, 
+                                  plot_title_suffix, output_filename, 
+                                  times_to_plot_ps, traj_interval_ps, max_r, num_bins_from_c,
+                                  cmap_name_1='Blues', cmap_name_2='Reds'):
     """
     Combines two Gs(r,t) datasets onto a single 1D plot.
     Y-axis is the ORIGINAL Gs(r,t) value on a LINEAR scale.
     """
-    print(f"--- 7. Plotting Combined Gs(r,t) [Original, Linear] ({plot_title_suffix}) ---")
+    print(f"--- 10. Plotting Combined Gs(r,t) [Original, Linear] ({plot_title_suffix}) ---")
     
     # --- Load Data 1 ---
     try:
@@ -729,8 +990,8 @@ def plot_combined_1d_gsrt_original(data_files_1, data_files_2,
         y_sem_1 = sem_gs_data_1[idx, :]
         
         plt.plot(r_values, y_avg_1, 
-                 label=f'{label_1} (dt = {t_ps:.1f} ps)', 
-                 color=color_1_current, linestyle='-', linewidth=2)
+               label=f'{label_1} (dt = {t_ps:.1f} ps)', 
+               color=color_1_current, linestyle='-', linewidth=2, marker='none')
         plt.fill_between(r_values, 
                          y_avg_1 - y_sem_1, 
                          y_avg_1 + y_sem_1, 
@@ -741,8 +1002,8 @@ def plot_combined_1d_gsrt_original(data_files_1, data_files_2,
         y_sem_2 = sem_gs_data_2[idx, :]
         
         plt.plot(r_values, y_avg_2, 
-                 label=f'{label_2} (dt = {t_ps:.1f} ps)', 
-                 color=color_2_current, linestyle='-', linewidth=2)
+               label=f'{label_2} (dt = {t_ps:.1f} ps)', 
+               color=color_2_current, linestyle='-', linewidth=2, marker='none')
         plt.fill_between(r_values, 
                          y_avg_2 - y_sem_2, 
                          y_avg_2 + y_sem_2, 
@@ -772,26 +1033,35 @@ if __name__ == "__main__":
     print(f"Ensemble Range: {ENSEMBLE_START} to {ENSEMBLE_END} (Total {NUM_ENSEMBLES})")
     print(f"Data Path: {BASE_PATH}\n")
 
-    # 1. Process Cluster Distribution
-    process_and_plot_ensemble_cluster_dist(ENSEMBLE_RANGE, BASE_PATH)
+#    # 1. Process Cluster Distribution
+#    process_and_plot_ensemble_cluster_dist(ENSEMBLE_RANGE, BASE_PATH)
+#
+#    # 2. Process Ta MSD Data
+#    ta_poly_files = process_and_average_msd(
+#        ENSEMBLE_RANGE, BASE_PATH, TA_POLY_MSD_PREFIX, NUM_ENSEMBLES
+#    )
+#    ta_iso_files = process_and_average_msd(
+#        ENSEMBLE_RANGE, BASE_PATH, TA_ISO_MSD_PREFIX, NUM_ENSEMBLES
+#    )
+#
+#    # 3. Plot Combined Ta MSD
+#    if ta_poly_files and ta_iso_files:
+#        plot_combined_msd(
+#            ta_poly_files, ta_iso_files,
+#            output_filename=os.path.join(BASE_PATH, "ensemble_avg_msd_ta_combined.png"),
+#            traj_interval_ps=TRAJ_INTERVAL_PS
+#        )
+#
+#    # 4. Process Ta-O Coordination
+#    process_and_plot_ta_o_coord(ENSEMBLE_RANGE, BASE_PATH)
+#    
+#    # 5. Process Ta Bridging
+#    process_and_plot_ta_bridging(ENSEMBLE_RANGE, BASE_PATH)
+#    
+#    # 6. [신규 추가] Process Oxygen Type (NBO/BO/UO)
+#    process_and_plot_oxygen_types(ENSEMBLE_RANGE, BASE_PATH)
 
-    # 2. Process NEW Ta MSD Data
-    ta_poly_files = process_and_average_msd(
-        ENSEMBLE_RANGE, BASE_PATH, TA_POLY_MSD_PREFIX, NUM_ENSEMBLES
-    )
-    ta_iso_files = process_and_average_msd(
-        ENSEMBLE_RANGE, BASE_PATH, TA_ISO_MSD_PREFIX, NUM_ENSEMBLES
-    )
-
-    # 3. Plot NEW Combined Ta MSD
-    if ta_poly_files and ta_iso_files:
-        plot_combined_msd(
-            ta_poly_files, ta_iso_files,
-            output_filename=os.path.join(BASE_PATH, "ensemble_avg_msd_ta_combined.png"),
-            traj_interval_ps=TRAJ_INTERVAL_PS
-        )
-
-    # 4. Process Na+ Gs(r,t) (Poly vs. Iso)
+    # 7. (was 4) Process Na+ Gs(r,t) (Poly vs. Iso)
     na_poly_files = process_and_average_van_hove(
         ENSEMBLE_RANGE, BASE_PATH, NA_POLY_GSRT_PREFIX, NUM_ENSEMBLES
     )
@@ -799,7 +1069,7 @@ if __name__ == "__main__":
         ENSEMBLE_RANGE, BASE_PATH, NA_ISO_GSRT_PREFIX, NUM_ENSEMBLES
     )
     
-    # 5. Process NEW Na+ Gs(r,t) (NBO vs. BO)
+    # 8. (was 5) Process Na+ Gs(r,t) (NBO vs. BO)
     na_nbo_files = process_and_average_van_hove(
         ENSEMBLE_RANGE, BASE_PATH, NA_NBO_GSRT_PREFIX, NUM_ENSEMBLES
     )
@@ -807,7 +1077,7 @@ if __name__ == "__main__":
         ENSEMBLE_RANGE, BASE_PATH, NA_BO_GSRT_PREFIX, NUM_ENSEMBLES
     )
 
-    # 6. Plot Individual Gs(r,t) (Poly)
+    # 9. (was 6) Plot Individual Gs(r,t) (Poly)
     if na_poly_files:
         plot_individual_van_hove(
             na_poly_files,
@@ -817,7 +1087,7 @@ if __name__ == "__main__":
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS
         )
 
-    # 7. Plot Individual Gs(r,t) (Iso)
+    # 10. (was 7) Plot Individual Gs(r,t) (Iso)
     if na_iso_files:
         plot_individual_van_hove(
             na_iso_files,
@@ -827,7 +1097,7 @@ if __name__ == "__main__":
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS
         )
 
-    # 8. Plot Individual Gs(r,t) (NBO)
+    # 11. (was 8) Plot Individual Gs(r,t) (NBO)
     if na_nbo_files:
         plot_individual_van_hove(
             na_nbo_files,
@@ -837,7 +1107,7 @@ if __name__ == "__main__":
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS
         )
 
-    # 9. Plot Individual Gs(r,t) (BO)
+    # 12. (was 9) Plot Individual Gs(r,t) (BO)
     if na_bo_files:
         plot_individual_van_hove(
             na_bo_files,
@@ -847,9 +1117,8 @@ if __name__ == "__main__":
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS
         )
 
-    # 10. Plot Combined Gs(r,t) (Poly vs. Iso)
+    # 13. (was 10) Plot Combined Gs(r,t) (Poly vs. Iso)
     if na_poly_files and na_iso_files:
-        # Plot 1: 4*pi*r^2 Log scale
         plot_combined_1d_gsrt_4pir2_log(
             na_poly_files, na_iso_files,
             label_1="Na+ (Poly)", label_2="Na+ (Iso)",
@@ -859,7 +1128,6 @@ if __name__ == "__main__":
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS,
             cmap_name_1='Blues', cmap_name_2='Reds'
         )
-        # Plot 2: Original Linear scale
         plot_combined_1d_gsrt_original(
             na_poly_files, na_iso_files,
             label_1="Na+ (Poly)", label_2="Na+ (Iso)",
@@ -870,9 +1138,8 @@ if __name__ == "__main__":
             cmap_name_1='Blues', cmap_name_2='Reds'
         )
 
-    # 11. Plot Combined Gs(r,t) (NBO vs. BO)
+    # 14. (was 11) Plot Combined Gs(r,t) (NBO vs. BO)
     if na_nbo_files and na_bo_files:
-        # Plot 1: 4*pi*r^2 Log scale
         plot_combined_1d_gsrt_4pir2_log(
             na_nbo_files, na_bo_files,
             label_1="Na+ (NBO/UO)", label_2="Na+ (BO)",
@@ -882,7 +1149,6 @@ if __name__ == "__main__":
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS,
             cmap_name_1='Greens', cmap_name_2='Oranges'
         )
-        # Plot 2: Original Linear scale
         plot_combined_1d_gsrt_original(
             na_nbo_files, na_bo_files,
             label_1="Na+ (NBO/UO)", label_2="Na+ (BO)",
@@ -891,6 +1157,19 @@ if __name__ == "__main__":
             times_to_plot_ps=TARGET_TIMES_PS,
             traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS,
             cmap_name_1='Greens', cmap_name_2='Oranges'
+        )
+
+
+    if na_poly_files and na_bo_files:
+        print("\n>>> EXECUTING NEW PLOT 15: Na+ (Poly) vs. Na+ (BO) [4pir2 Log] <<<")
+        plot_combined_1d_gsrt_4pir2_log(
+            na_poly_files, na_bo_files,
+            label_1="Na+ (Poly)", label_2="Na+ (BO)",
+            plot_title_suffix="Na+ (Poly vs. BO)",
+            output_filename=os.path.join(BASE_PATH, "ensemble_avg_gsrt_na_poly_bo_4pir2_log.png"),
+            times_to_plot_ps=TARGET_TIMES_PS,
+            traj_interval_ps=TRAJ_INTERVAL_PS, max_r=MAX_R, num_bins_from_c=NUMBINS,
+            cmap_name_1='Blues', cmap_name_2='Oranges'
         )
 
     print("--- All Ensemble Averaging and Visualization Tasks COMPLETE ---")
